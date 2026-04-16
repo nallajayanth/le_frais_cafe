@@ -583,14 +583,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Le Frais',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1E5C3A),
-                      letterSpacing: 0.5,
-                    ),
+                  Image.asset(
+                    'assets/logo.jpg',
+                    height: 28,
+                    fit: BoxFit.contain,
                   ),
                   AnimatedOpacity(
                     opacity: isLast ? 0.0 : 1.0,

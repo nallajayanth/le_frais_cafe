@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../models/app_cart.dart';
-import '../../models/cart_entry.dart';
+import 'package:provider/provider.dart';
+import '../../providers/cart_provider.dart';
 import '../cart/cart_screen.dart';
+import '../../models/cart_entry.dart';
+import '../../models/menu_item.dart';
 
 // ── Review model ──────────────────────────────────────────────────────────────
 
@@ -64,7 +66,8 @@ class ItemDetailScreen extends StatefulWidget {
   final String? tag;
   final double? rating;
   final int? ratingCount;
-  final OrderMode orderMode;
+  final bool isVeg;
+  final List<CustomizationGroup>? customizations;
 
   const ItemDetailScreen({
     super.key,
@@ -76,7 +79,8 @@ class ItemDetailScreen extends StatefulWidget {
     this.tag,
     this.rating,
     this.ratingCount,
-    this.orderMode = OrderMode.delivery,
+    required this.isVeg,
+    this.customizations,
   });
 
   @override
@@ -84,17 +88,41 @@ class ItemDetailScreen extends StatefulWidget {
 }
 
 class _ItemDetailScreenState extends State<ItemDetailScreen> {
-  int _qty = 1;
-  String _milkType = 'Oat Milk';
-  bool _extraParmesan = false;
-  bool _chilliFlakes = false;
+  int _qty = 0;
   bool _descExpanded = false;
   final TextEditingController _instructionsController = TextEditingController();
+  final Map<String, Set<CustomizationOption>> _selectedOptions = {};
 
-  static const _milkOptions = ['Oat Milk', 'Soy Milk'];
   static const Color _darkGreen = Color(0xFF1E5C3A);
   static const Color _priceGreen = Color(0xFF2D8653);
   static const Color _bgCream = Color(0xFFF8F7F4);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.customizations != null) {
+      for (var group in widget.customizations!) {
+        if (group.isRequired && group.options.isNotEmpty) {
+          _selectedOptions[group.title] = {group.options.first};
+        } else {
+          _selectedOptions[group.title] = {};
+        }
+      }
+    }
+  }
+
+  double get _currentPrice {
+    double total = widget.price;
+    if (widget.customizations != null) {
+      for (var group in widget.customizations!) {
+        final selected = _selectedOptions[group.title] ?? {};
+        for (var opt in selected) {
+          total += opt.extraPrice;
+        }
+      }
+    }
+    return total;
+  }
 
   @override
   void dispose() {
@@ -252,9 +280,15 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     // ── Tags row ─────────────────────────────────────────────
                     Row(
                       children: [
-                        _tag('VEG', const Color(0xFFDFF2E8), const Color(0xFF2D8653)),
+                        _tag(widget.isVeg ? 'VEG' : 'NON-VEG', 
+                             widget.isVeg ? const Color(0xFFDFF2E8) : const Color(0xFFFEE2E2), 
+                             widget.isVeg ? const Color(0xFF2D8653) : const Color(0xFFDC2626)),
                         const SizedBox(width: 8),
-                        _tag('ARTISAN', const Color(0xFFFDF3E3), const Color(0xFFC88B1A)),
+                        if (widget.tag != null) ...[
+                          _tag(widget.tag!.toUpperCase(), const Color(0xFFFDF3E3), const Color(0xFFC88B1A)),
+                          const SizedBox(width: 8),
+                        ],
+                        _tag('ARTISAN', const Color(0xFFF1F5F9), const Color(0xFF475569)),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -381,127 +415,150 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     _sectionDivider(),
 
                     // ── Customise Your Order ──────────────────────────────────
-                    const Text(
-                      'Customise Your Order',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'Georgia',
-                        color: Color(0xFF1C1A17),
+                    if (widget.customizations != null && widget.customizations!.isNotEmpty) ...[
+                      const Text(
+                        'Customise Your Order',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'Georgia',
+                          color: Color(0xFF1C1A17),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Milk Type
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Milk Type',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1C1A17),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 9, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEEEDE8),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            'OPTIONAL',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF9A9690),
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: _milkOptions.map((milk) {
-                        final sel = _milkType == milk;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _milkType = milk),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: sel
-                                    ? const Color(0xFFE8F5EE)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: sel
-                                      ? _darkGreen
-                                      : const Color(0xFFDEDCDA),
-                                  width: sel ? 1.5 : 1,
-                                ),
+                      const SizedBox(height: 18),
+                      // Loop over each customisation group
+                      for (var group in widget.customizations!) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              group.title,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1C1A17),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    milk,
+                            ),
+                            if (!group.isRequired)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 9, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEEEDE8),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'OPTIONAL',
                                     style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: sel
-                                          ? _darkGreen
-                                          : const Color(0xFF5A5853),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF9A9690),
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
-                                  if (sel) ...[
-                                    const SizedBox(width: 6),
-                                    const Icon(
-                                      Icons.check_circle,
-                                      size: 15,
-                                      color: _darkGreen,
-                                    ),
-                                  ],
-                                ],
                               ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        
+                        if (group.multiSelect)
+                          Column(
+                            children: group.options.map((opt) {
+                              final isSelected =
+                                  _selectedOptions[group.title]?.contains(opt) ?? false;
+                              return _buildAddon(
+                                label: opt.name,
+                                price: opt.extraPrice == 0
+                                    ? 'Free'
+                                    : '+₹${opt.extraPrice.toStringAsFixed(0)}',
+                                value: isSelected,
+                                onChanged: (v) {
+                                  setState(() {
+                                    if (v) {
+                                      _selectedOptions[group.title]?.add(opt);
+                                    } else {
+                                      _selectedOptions[group.title]?.remove(opt);
+                                    }
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          )
+                        else
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: group.options.map((opt) {
+                                final isSelected =
+                                    _selectedOptions[group.title]?.contains(opt) ?? false;
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 10),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedOptions[group.title] = {opt};
+                                      });
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 18, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? const Color(0xFFE8F5EE)
+                                            : Colors.white,
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? _darkGreen
+                                              : const Color(0xFFDEDCDA),
+                                          width: isSelected ? 1.5 : 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            opt.name,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                              color: isSelected
+                                                  ? _darkGreen
+                                                  : const Color(0xFF5A5853),
+                                            ),
+                                          ),
+                                          if (opt.extraPrice > 0) ...[
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '(+₹${opt.extraPrice.toStringAsFixed(0)})',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: isSelected
+                                                    ? _darkGreen
+                                                    : const Color(0xFF9A9690),
+                                              ),
+                                            ),
+                                          ],
+                                          if (isSelected) ...[
+                                            const SizedBox(width: 6),
+                                            const Icon(
+                                              Icons.check_circle,
+                                              size: 15,
+                                              color: _darkGreen,
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Add-ons
-                    const Text(
-                      'Add-ons',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1C1A17),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildAddon(
-                      label: 'Extra Parmesan',
-                      price: '+\$4',
-                      value: _extraParmesan,
-                      onChanged: (v) => setState(() => _extraParmesan = v),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildAddon(
-                      label: 'Chilli Flakes',
-                      price: 'Free',
-                      value: _chilliFlakes,
-                      onChanged: (v) => setState(() => _chilliFlakes = v),
-                      freeLabel: true,
-                    ),
+                        const SizedBox(height: 20),
+                      ],
+                    ],
 
                     const SizedBox(height: 20),
 
@@ -608,7 +665,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _qtyBtn(Icons.remove, () {
-                          if (_qty > 1) setState(() => _qty--);
+                          if (_qty > 0) setState(() => _qty--);
                         }),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -631,31 +688,27 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
-                        // Merge into AppCart (increment if item already exists)
-                        final currentItems =
-                            List<CartEntry>.from(AppCart.items);
-                        final existing = currentItems
-                            .where((e) => e.name == widget.name)
-                            .firstOrNull;
-                        if (existing != null) {
-                          existing.qty += _qty;
-                        } else {
-                          currentItems.add(CartEntry(
-                            name: widget.name,
-                            price: widget.price,
-                            imageUrl: widget.imageUrl,
-                            qty: _qty,
-                          ));
-                        }
-                        AppCart.update(currentItems, widget.orderMode);
+                        final cart = context.read<CartProvider>();
+                        final qtyToAdd = _qty == 0 ? 1 : _qty;
+                        
+                        cart.addItem(CartEntry(
+                          name: widget.name,
+                          price: _currentPrice,
+                          imageUrl: widget.imageUrl,
+                          qty: qtyToAdd,
+                          selectedOptions: _selectedOptions.values
+                              .expand((opts) => opts)
+                              .map((opt) => opt.name)
+                              .toList(),
+                          instructions: _instructionsController.text.trim().isNotEmpty 
+                              ? _instructionsController.text.trim() 
+                              : null,
+                        ));
 
                         // Navigate to CartScreen
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => CartScreen(
-                              items: currentItems,
-                              orderMode: widget.orderMode,
-                            ),
+                            builder: (_) => const CartScreen(),
                             settings:
                                 const RouteSettings(name: '/cart'),
                           ),
@@ -688,7 +741,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                '₹${(widget.price * _qty).toStringAsFixed(0)}',
+                                '₹${(_currentPrice * (_qty == 0 ? 1 : _qty)).toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,

@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../models/app_cart.dart';
-import '../cart/cart_screen.dart';
-import '../menu/menu_screen.dart';
-import 'order_history_screen.dart';
-import '../profile/profile_screen.dart';
+import '../shared/custom_bottom_nav_bar.dart';
 
 class OrderTrackerScreen extends StatefulWidget {
   const OrderTrackerScreen({super.key});
@@ -13,40 +9,7 @@ class OrderTrackerScreen extends StatefulWidget {
 }
 
 class _OrderTrackerScreenState extends State<OrderTrackerScreen> {
-  // ── Nav item ──────────────────────────────────────────────────────────────
-  Widget _navItem(IconData icon, String label, bool active,
-      {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (active)
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E3D2A),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            )
-          else
-            Icon(icon, color: const Color(0xFFB0AEAA), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-              color: active ? const Color(0xFF1E3D2A) : const Color(0xFFB0AEAA),
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildTimelineDot({
     required IconData icon,
@@ -594,78 +557,7 @@ class _OrderTrackerScreenState extends State<OrderTrackerScreen> {
       ),
 
       // ── Bottom Navigation ──────────────────────────────────────────────────
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _navItem(Icons.home_outlined, 'HOME', false,
-                  onTap: () => Navigator.of(context).popUntil(
-                      (r) => r.settings.name == '/home' || r.isFirst)),
-              _navItem(Icons.restaurant_menu_rounded, 'MENU', false,
-                  onTap: () {
-                    Navigator.of(context).popUntil(
-                        (r) => r.settings.name == '/home' || r.isFirst);
-                    Future.microtask(() => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const MenuScreen(),
-                            settings: const RouteSettings(name: '/menu'),
-                          ),
-                        ));
-                  }),
-              _navItem(Icons.receipt_long_outlined, 'ORDERS', true,
-                  onTap: () {
-                    Navigator.of(context).popUntil(
-                        (r) => r.settings.name == '/home' || r.isFirst);
-                    Future.microtask(() => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const OrderHistoryScreen(),
-                            settings: const RouteSettings(name: '/orders'),
-                          ),
-                        ));
-                  }),
-              _navItem(
-                Icons.shopping_cart_rounded,
-                'CART',
-                false,
-                onTap: () {
-                  Navigator.of(context).popUntil(
-                      (r) => r.settings.name == '/home' || r.isFirst);
-                  Future.microtask(() => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CartScreen(
-                            items: AppCart.items,
-                            orderMode: AppCart.orderMode,
-                          ),
-                          settings: const RouteSettings(name: '/cart'),
-                        ),
-                      ));
-                },
-              ),
-              _navItem(Icons.person_outline_rounded, 'PROFILE', false, onTap: () {
-                Navigator.of(context).popUntil(
-                    (r) => r.settings.name == '/home' || r.isFirst);
-                Future.microtask(() => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const ProfileScreen(),
-                      settings: const RouteSettings(name: '/profile'),
-                    )));
-              }),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: const CustomBottomNavBar(activeIndex: 2),
     );
   }
 }

@@ -1,98 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../shared/item_detail_screen.dart';
 import '../cart/cart_screen.dart';
-import '../../models/app_cart.dart';
+import 'package:provider/provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../models/cart_entry.dart';
+import '../../models/menu_item.dart';
+import '../../data/menu_data.dart';
 import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
 import '../profile/profile_screen.dart';
 
-// ── Pickup item model ─────────────────────────────────────────────────────────
-
-class _PickupItem {
-  final String name;
-  final String description;
-  final double price;
-  final double? originalPrice;
-  final String imageUrl;
-  final String? tag;
-  final double? rating;
-  final int? ratingCount;
-
-  const _PickupItem({
-    required this.name,
-    required this.description,
-    required this.price,
-    this.originalPrice,
-    required this.imageUrl,
-    this.tag,
-    this.rating,
-    this.ratingCount,
-  });
-}
-
-// ── Static Data ───────────────────────────────────────────────────────────────
-
-const List<_PickupItem> _pickupItems = [
-  _PickupItem(
-    name: 'Heirloom Breakfast Set',
-    description: 'Espresso, croissant & seasonal jam',
-    price: 12.50,
-    originalPrice: 15.00,
-    imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?q=80&w=900&auto=format&fit=crop',
-    tag: 'BESTSELLER',
-    rating: 4.5,
-    ratingCount: 183,
-  ),
-  _PickupItem(
-    name: 'Pain au Chocolat',
-    description: 'Flaky layers, Belgian dark chocolate',
-    price: 6.50,
-    originalPrice: 8.00,
-    imageUrl: 'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?q=80&w=900&auto=format&fit=crop',
-    tag: 'BESTSELLER',
-    rating: 4.2,
-    ratingCount: 97,
-  ),
-  _PickupItem(
-    name: 'Daily Macarons',
-    description: 'Box of 6, rotating seasonal flavors',
-    price: 10.00,
-    originalPrice: 13.00,
-    imageUrl: 'https://images.unsplash.com/photo-1569864358642-9d1684040f43?q=80&w=900&auto=format&fit=crop',
-    rating: 4.6,
-    ratingCount: 241,
-  ),
-  _PickupItem(
-    name: 'Midnight Truffle',
-    description: 'Dark chocolate ganache, 3 included',
-    price: 7.30,
-    originalPrice: 9.00,
-    imageUrl: 'https://images.unsplash.com/photo-1548741487-18d198e44e8c?q=80&w=900&auto=format&fit=crop',
-    rating: 4.3,
-    ratingCount: 58,
-  ),
-  _PickupItem(
-    name: 'Artisan Sourdough',
-    description: 'Whole loaf, baked every morning',
-    price: 9.00,
-    imageUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=900&auto=format&fit=crop',
-    tag: 'POPULAR',
-    rating: 4.8,
-    ratingCount: 312,
-  ),
-  _PickupItem(
-    name: 'Forest Mushroom Tart',
-    description: 'Ricotta, truffle oil, wild greens',
-    price: 11.00,
-    imageUrl: 'https://images.unsplash.com/photo-1541529086526-db283c563270?q=80&w=900&auto=format&fit=crop',
-    rating: 4.4,
-    ratingCount: 76,
-  ),
-];
-
-// ── Screen ────────────────────────────────────────────────────────────────────
+import '../shared/custom_bottom_nav_bar.dart';
 
 class PickupScreen extends StatefulWidget {
   const PickupScreen({super.key});
@@ -102,29 +20,98 @@ class PickupScreen extends StatefulWidget {
 }
 
 class _PickupScreenState extends State<PickupScreen> {
-  final Map<String, int> _cart = {};
   String _selectedCategory = 'All';
-  final List<String> _categories = [
+  
+  static const Color _darkGreen = Color(0xFF1E3D2A);
+  static const Color _accentGreen = Color(0xFF2D8653);
+  static const Color _bgCream = Color(0xFFFDFCF9);
+  static const Color _gold = Color(0xFFC77A1A);
+
+  List<String> get _categories => [
     'All',
-    'Breakfast',
-    'Bakery',
-    'Drinks',
-    'Desserts',
+    'Appetizers',
+    'Chinese Starters',
+    'Momos',
+    'Burgers',
+    'Noodles',
+    'Rice',
   ];
 
-  int get _totalCartItems => _cart.values.fold(0, (a, b) => a + b);
-  double get _totalCartPrice {
-    double total = 0;
-    for (final item in _pickupItems) {
-      final qty = _cart[item.name] ?? 0;
-      total += item.price * qty;
-    }
-    return total;
+  List<MenuItem> get _filteredItems {
+    if (_selectedCategory == 'All') return MenuData.getAllItems();
+    return MenuData.getAllItems().where((item) => item.category == _selectedCategory).toList();
   }
 
-  // ── 2-Col Grid Card ───────────────────────────────────────────────────────
-  Widget _buildGridCard(_PickupItem item) {
-    final qty = _cart[item.name] ?? 0;
+  // ── Header Component ───────────────────────────────────────────────────
+  Widget _buildHeader(CartProvider cart) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _circleButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+          Column(
+            children: [
+              Hero(
+                tag: 'app_logo',
+                child: Image.asset(
+                  'assets/logo.jpg',
+                  height: 38,
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5C842),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'PICKUP MODE',
+                  style: TextStyle(color: Color(0xFF3D2B00), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                ),
+              ),
+            ],
+          ),
+          _circleButton(
+            icon: Icons.shopping_cart_outlined,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CartScreen())),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _circleButton({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 18, color: _darkGreen),
+      ),
+    );
+  }
+
+  // ── Grid Item Card ──────────────────────────────────────────────────────
+  Widget _buildGridCard(MenuItem item, CartProvider cart) {
+    final cartItemIndex = cart.items.indexWhere((e) => e.name == item.name);
+    final qty = cartItemIndex >= 0 ? cart.items[cartItemIndex].qty : 0;
 
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
@@ -133,259 +120,151 @@ class _PickupScreenState extends State<PickupScreen> {
             name: item.name,
             description: item.description,
             price: item.price,
-            originalPrice: item.originalPrice,
             imageUrl: item.imageUrl,
             tag: item.tag,
             rating: item.rating,
-            ratingCount: item.ratingCount,
+            isVeg: item.isVeg,
+            customizations: item.customizations,
           ),
         ),
       ),
       child: Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Image ──────────────────────────────────────────────────────────
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
-                child: Image.network(
-                  item.imageUrl,
-                  height: 140,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              // Tag badge
-              if (item.tag != null)
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFDECD4),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      item.tag!,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFC77A1A),
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-
-          // ── Content ────────────────────────────────────────────────────────
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 15,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image Stack
+            Expanded(
+              flex: 4,
+              child: Stack(
                 children: [
-                  // Rating
-                  if (item.rating != null)
-                    Row(
-                      children: [
-                        const Icon(Icons.star_rounded,
-                            size: 13, color: Color(0xFF1E5C3A)),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${item.rating} (${item.ratingCount})',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF5A5853),
+                  Hero(
+                    tag: 'item_pickup_${item.id}',
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      child: Image.network(
+                        item.imageUrl,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: const Color(0xFFF2EFEE),
+                          child: const Center(
+                            child: Icon(Icons.image_not_supported_outlined, color: Color(0xFFB0AEAA), size: 32),
                           ),
                         ),
-                      ],
-                    ),
-                  const SizedBox(height: 4),
-
-                  // Name
-                  Text(
-                    item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Georgia',
-                      color: Color(0xFF14472A),
-                      height: 1.2,
-                    ),
-                  ),
-                  const Spacer(),
-
-                  // Price row + ADD/stepper
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Prices
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (item.originalPrice != null)
-                            Text(
-                              '₹${item.originalPrice!.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFFAFADAA),
-                                decoration: TextDecoration.lineThrough,
-                              ),
-                            ),
-                          Text(
-                            '₹${item.price.toStringAsFixed(2)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF1E5C3A),
-                            ),
-                          ),
-                        ],
                       ),
-
-                      // ADD button / Stepper
-                      qty == 0
-                          ? GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _cart[item.name] = 1;
-                                });
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 7),
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: const Color(0xFF14472A),
-                                    width: 1.5,
-                                  ),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Text(
-                                  'ADD',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF14472A),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF14472A),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (qty > 1) {
-                                          _cart[item.name] = qty - 1;
-                                        } else {
-                                          _cart.remove(item.name);
-                                        }
-                                      });
-                                    },
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 7),
-                                      child: Icon(Icons.remove,
-                                          size: 14, color: Colors.white),
-                                    ),
-                                  ),
-                                  Text(
-                                    '$qty',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _cart[item.name] = qty + 1;
-                                      });
-                                    },
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 7),
-                                      child: Icon(Icons.add,
-                                          size: 14, color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                    ],
+                    ),
                   ),
+                  Positioned(top: 10, left: 10, child: _vegIndicator(item.isVeg)),
+                  if (item.tag != null)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: const BoxDecoration(
+                          color: _gold,
+                          borderRadius: BorderRadius.only(topLeft: Radius.circular(15)),
+                        ),
+                        child: Text(item.tag!, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                      ),
+                    ),
                 ],
               ),
             ),
-          ),
-        ],
+            // Content
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'Georgia', color: _darkGreen),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, color: Color(0xFF8A8884), height: 1.3),
+                    ),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('₹${item.price}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _accentGreen)),
+                        _quantityControls(item, cart, qty),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      ),  // closes child: Container
-    );    // closes GestureDetector
+    );
   }
 
-  // ── Bottom nav item ───────────────────────────────────────────────────────
-  Widget _navItem(IconData icon, String label, bool active,
-      {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
+  Widget _vegIndicator(bool isVeg) {
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: isVeg ? Colors.green : Colors.red, width: 1), borderRadius: BorderRadius.circular(3)),
+      child: Container(width: 6, height: 6, decoration: BoxDecoration(color: isVeg ? Colors.green : Colors.red, shape: BoxShape.circle)),
+    );
+  }
+
+  Widget _quantityControls(MenuItem item, CartProvider cart, int qty) {
+    if (qty == 0) {
+      return GestureDetector(
+        onTap: () => cart.addItem(CartEntry(name: item.name, price: item.price, imageUrl: item.imageUrl, qty: 1)),
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(color: _darkGreen, shape: BoxShape.circle),
+          child: const Icon(Icons.add, color: Colors.white, size: 16),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(color: _bgCream, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFEAE8E4))),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (active)
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E3D2A),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            )
-          else
-            Icon(icon, color: const Color(0xFFB0AEAA), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-              color: active
-                  ? const Color(0xFF1E3D2A)
-                  : const Color(0xFFB0AEAA),
-              letterSpacing: 0.5,
-            ),
+          GestureDetector(
+            onTap: () {
+              final idx = cart.items.indexWhere((e) => e.name == item.name);
+              cart.decrementQuantity(idx);
+            },
+            child: const Icon(Icons.remove, size: 14, color: _darkGreen),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text('$qty', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _darkGreen)),
+          ),
+          GestureDetector(
+            onTap: () {
+              final idx = cart.items.indexWhere((e) => e.name == item.name);
+              cart.incrementQuantity(idx);
+            },
+            child: const Icon(Icons.add, size: 14, color: _darkGreen),
           ),
         ],
       ),
@@ -394,414 +273,119 @@ class _PickupScreenState extends State<PickupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cart = context.watch<CartProvider>();
+    final items = _filteredItems;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F6),
-      // ── App Bar ────────────────────────────────────────────────────────────
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF9F9F6),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF14472A)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
+      backgroundColor: _bgCream,
+      body: SafeArea(
+        child: Column(
           children: [
-            const Text(
-              'Le Frais',
-              style: TextStyle(
-                color: Color(0xFF14472A),
-                fontSize: 22,
-                fontFamily: 'Georgia',
-                fontWeight: FontWeight.w800,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-            const SizedBox(width: 8),
+            _buildHeader(cart),
+            
+            // Pickup Info Banner
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5C842),
-                borderRadius: BorderRadius.circular(12),
+                color: const Color(0xFFF2EFE8),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: const Text(
-                'PICK UP',
-                style: TextStyle(
-                  color: Color(0xFF3D2B00),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart_outlined,
-                    color: Color(0xFF14472A)),
-                onPressed: () {
-                  final entries = _pickupItems
-                      .where((item) => (_cart[item.name] ?? 0) > 0)
-                      .map((item) => CartEntry(
-                            name: item.name,
-                            price: item.price,
-                            imageUrl: item.imageUrl,
-                            qty: _cart[item.name]!,
-                          ))
-                      .toList();
-                  AppCart.update(entries, OrderMode.pickup);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CartScreen(
-                        items: entries,
-                        orderMode: OrderMode.pickup,
-                      ),
-                      settings: const RouteSettings(name: '/cart'),
-                    ),
-                  );
-                },
-              ),
-              if (_totalCartItems > 0)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF14472A),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        '$_totalCartItems',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-
-      body: Column(
-        children: [
-          // ── Ready Time Banner ────────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEEDE8),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.access_time_rounded,
-                    size: 15, color: Color(0xFF5A5853)),
-                const SizedBox(width: 8),
-                RichText(
-                  text: const TextSpan(
-                    style:
-                        TextStyle(fontSize: 13, color: Color(0xFF5A5853)),
-                    children: [
-                      TextSpan(text: 'Estimated Ready Time ~ '),
-                      TextSpan(
-                        text: '20 min',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF14472A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Search bar ────────────────────────────────────────────────────
-          Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F0E9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search pickup items...',
-                  hintStyle:
-                      TextStyle(color: Color(0xFFAFAFAC), fontSize: 14),
-                  prefixIcon: Icon(Icons.search,
-                      color: Color(0xFFAFAFAC), size: 20),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Category Chips ────────────────────────────────────────────────
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemCount: _categories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final cat = _categories[i];
-                final isSelected = _selectedCategory == cat;
-                return GestureDetector(
-                  onTap: () =>
-                      setState(() => _selectedCategory = cat),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFF14472A)
-                          : const Color(0xFFF1F0E9),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      cat,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : const Color(0xFF5A5853),
-                        fontWeight: isSelected
-                            ? FontWeight.w700
-                            : FontWeight.w500,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // ── Section Header ────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Pick of the Batch',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF14472A),
-                  ),
-                ),
-                Text(
-                  '${_pickupItems.length} items',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF5A5853),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // ── 2-Column Grid ─────────────────────────────────────────────────
-          Expanded(
-            child: GridView.builder(
-              padding:
-                  const EdgeInsets.fromLTRB(16, 0, 16, 100),
-              gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.62,
-              ),
-              itemCount: _pickupItems.length,
-              itemBuilder: (_, i) => _buildGridCard(_pickupItems[i]),
-            ),
-          ),
-        ],
-      ),
-
-      // ── Sticky cart banner ────────────────────────────────────────────────
-      bottomSheet: _totalCartItems > 0
-          ? GestureDetector(
-              onTap: () {
-                final entries = _pickupItems
-                    .where((item) => (_cart[item.name] ?? 0) > 0)
-                    .map((item) => CartEntry(
-                          name: item.name,
-                          price: item.price,
-                          imageUrl: item.imageUrl,
-                          qty: _cart[item.name]!,
-                        ))
-                    .toList();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => CartScreen(
-                      items: entries,
-                      orderMode: OrderMode.pickup,
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF14472A),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF14472A).withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$_totalCartItems ${_totalCartItems == 1 ? 'item' : 'items'} added',
-                        style: const TextStyle(
-                          color: Color(0xFFAFE0CD),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '₹${_totalCartPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Row(
-                    children: [
-                      Text(
-                        'View Cart',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      SizedBox(width: 6),
-                      Icon(Icons.arrow_forward_rounded,
-                          color: Colors.white, size: 18),
-                    ],
+                  Icon(Icons.timer_outlined, size: 16, color: Color(0xFF5A5853)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Approx. Ready in 20 mins',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF1E3D2A)),
                   ),
                 ],
               ),
-              ),
-            )
-          : null,
+            ),
 
-      // ── Bottom Navigation ─────────────────────────────────────────────────
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+            // Category Scroll
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SizedBox(
+                height: 38,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _categories.length,
+                  itemBuilder: (ctx, i) {
+                    final cat = _categories[i];
+                    final active = _selectedCategory == cat;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedCategory = cat),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        margin: const EdgeInsets.only(right: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 18),
+                        decoration: BoxDecoration(color: active ? _darkGreen : Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: active ? Colors.transparent : const Color(0xFFEAE8E4))),
+                        alignment: Alignment.center,
+                        child: Text(cat.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: active ? Colors.white : const Color(0xFF6A6865), letterSpacing: 0.5)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+
+            // Item Grid
+            Expanded(
+              child: items.isEmpty 
+              ? const Center(child: Text('No items found.'))
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.58,
+                  ),
+                  itemCount: items.length,
+                  itemBuilder: (ctx, i) => _buildGridCard(items[i], cart),
+                ),
             ),
           ],
         ),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _navItem(
-                Icons.home_outlined,
-                'HOME',
-                true,
-                onTap: () => Navigator.of(context).pop(),
-              ),
-              _navItem(Icons.restaurant_menu_rounded, 'MENU', false,
-                  onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const MenuScreen(),
-                          settings: const RouteSettings(name: '/menu'),
-                        ),
-                      )),
-              _navItem(Icons.receipt_long_outlined, 'ORDERS', false,
-                  onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const OrderHistoryScreen(),
-                          settings: const RouteSettings(name: '/orders'),
-                        ),
-                      )),
-              _navItem(
-                Icons.shopping_cart_rounded,
-                'CART',
-                false,
-                onTap: () {
-                  final entries = _pickupItems
-                      .where((item) => (_cart[item.name] ?? 0) > 0)
-                      .map((item) => CartEntry(
-                            name: item.name,
-                            price: item.price,
-                            imageUrl: item.imageUrl,
-                            qty: _cart[item.name]!,
-                          ))
-                      .toList();
-                  // Sync global cart so any screen can navigate here
-                  AppCart.update(entries, OrderMode.pickup);
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CartScreen(
-                        items: entries,
-                        orderMode: OrderMode.pickup,
-                      ),
-                      settings: const RouteSettings(name: '/cart'),
+      ),
+
+      // ── Cart Bottom Sheet ─────────────────────────────────────────────
+      bottomSheet: cart.totalItems > 0 
+        ? Container(
+            padding: const EdgeInsets.fromLTRB(25, 12, 25, 25),
+            decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -10))]),
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CartScreen())),
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(color: _darkGreen, borderRadius: BorderRadius.circular(20)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 22),
+                    const SizedBox(width: 12),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${cart.totalItems} ITEMS', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w800)),
+                        Text('₹${cart.subtotal}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+                      ],
                     ),
-                  );
-                },
+                    const Spacer(),
+                    const Text('CHECKOUT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
+                    const Icon(Icons.arrow_right_alt_rounded, color: Colors.white),
+                  ],
+                ),
               ),
-              _navItem(Icons.person_outline_rounded, 'PROFILE', false,
-                  onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const ProfileScreen(),
-                          settings: const RouteSettings(name: '/profile'),
-                        ),
-                      )),
-            ],
-          ),
-        ),
-      ),    // closes Scaffold's bottomNavigationBar Container
-    );        // closes Scaffold
+            ),
+          )
+        : null,
+
+      bottomNavigationBar: const CustomBottomNavBar(activeIndex: 0),
+    );
   }
 }

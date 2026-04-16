@@ -3,8 +3,15 @@ import 'package:flutter/services.dart';
 import '../dine_in/dine_in_screen.dart';
 import '../pickup/pickup_screen.dart';
 import '../delivery/delivery_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../models/cart_entry.dart';
+import '../profile/profile_screen.dart';
+import '../cart/cart_screen.dart';
 
-enum OrderPreference { dineIn, pickup, delivery }
+
+
+import '../shared/custom_bottom_nav_bar.dart';
 
 class OrderPreferenceScreen extends StatefulWidget {
   const OrderPreferenceScreen({super.key});
@@ -14,12 +21,12 @@ class OrderPreferenceScreen extends StatefulWidget {
 }
 
 class _OrderPreferenceScreenState extends State<OrderPreferenceScreen> {
-  OrderPreference _selectedPreference = OrderPreference.dineIn;
+  OrderMode _selectedPreference = OrderMode.dineIn;
 
   Widget _buildPreferenceCard({
     required String title,
     required String subtitle,
-    required OrderPreference type,
+    required OrderMode type,
     required String emoji,
   }) {
     final bool isSelected = _selectedPreference == type;
@@ -162,25 +169,28 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen> {
   }
 
   void _onContinue() {
-    if (_selectedPreference == OrderPreference.pickup) {
+    final cart = context.read<CartProvider>();
+    cart.updateOrderMode(_selectedPreference);
+
+    if (_selectedPreference == OrderMode.pickup) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => const PickupScreen(),
-          settings: const RouteSettings(name: '/home'),
+          settings: const RouteSettings(name: '/pickup'),
         ),
       );
-    } else if (_selectedPreference == OrderPreference.dineIn) {
+    } else if (_selectedPreference == OrderMode.dineIn) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => const DineInScreen(),
-          settings: const RouteSettings(name: '/home'),
+          settings: const RouteSettings(name: '/dine_in'),
         ),
       );
     } else {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => const DeliveryScreen(),
-          settings: const RouteSettings(name: '/home'),
+          settings: const RouteSettings(name: '/delivery'),
         ),
       );
     }
@@ -188,6 +198,7 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cart = context.watch<CartProvider>();
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -202,16 +213,85 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen> {
           elevation: 0,
           centerTitle: true,
           automaticallyImplyLeading: false, // no back arrow — this is root
-          title: const Text(
-            'Le Frais',
-            style: TextStyle(
-              fontSize: 22,
-              fontFamily: 'Georgia',
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF14472A),
-            ),
+          title: Image.asset(
+            'assets/logo.jpg',
+            height: 38,
+            fit: BoxFit.contain,
           ),
+          actions: [
+            if (cart.totalItems > 0)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => CartScreen()),
+                    );
+                  },
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFEAE8E4)),
+                        ),
+                        child: const Icon(
+                          Icons.shopping_bag_outlined,
+                          color: Color(0xFF14472A),
+                          size: 18,
+                        ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFB94040),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Text(
+                            '${cart.totalItems}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  );
+                },
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF14472A),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -244,19 +324,19 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen> {
               _buildPreferenceCard(
                 title: 'Dine-In',
                 subtitle: 'Scan QR to order at table',
-                type: OrderPreference.dineIn,
+                type: OrderMode.dineIn,
                 emoji: '🍽️',
               ),
               _buildPreferenceCard(
                 title: 'Pickup',
                 subtitle: 'Order ahead for quick collection',
-                type: OrderPreference.pickup,
+                type: OrderMode.pickup,
                 emoji: '🛍️',
               ),
               _buildPreferenceCard(
                 title: 'Delivery',
                 subtitle: 'Get it delivered to your door',
-                type: OrderPreference.delivery,
+                type: OrderMode.delivery,
                 emoji: '🛵',
               ),
               const SizedBox(height: 16),
@@ -319,7 +399,7 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.only(bottom: 100, left: 24, right: 24),
         child: SizedBox(
           width: double.infinity,
           height: 56,
@@ -352,7 +432,8 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen> {
           ),
         ),
       ),
-      ),   // closes Scaffold
-    );     // closes PopScope
+      bottomNavigationBar: const CustomBottomNavBar(activeIndex: 0),
+      ), // closes Scaffold
+    );   // closes PopScope 
   }
 }

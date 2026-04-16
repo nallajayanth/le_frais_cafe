@@ -7,6 +7,9 @@ import '../checkout/checkout_screen.dart';
 import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
 import '../profile/profile_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/cart_provider.dart';
+import '../shared/custom_bottom_nav_bar.dart';
 
 // ── "You might also like" suggestion ─────────────────────────────────────────
 
@@ -55,21 +58,13 @@ const List<_Suggestion> _suggestions = [
 // ── Cart Screen ───────────────────────────────────────────────────────────────
 
 class CartScreen extends StatefulWidget {
-  final List<CartEntry> items;
-  final OrderMode orderMode;
-
-  const CartScreen({
-    super.key,
-    required this.items,
-    required this.orderMode,
-  });
+  const CartScreen({super.key});
 
   @override
   State<CartScreen> createState() => _CartScreenState();
 }
 
 class _CartScreenState extends State<CartScreen> {
-  late List<CartEntry> _items;
   bool _useLoyalty = false;
   DeliveryAddress? _deliveryAddress; // for delivery mode
 
@@ -80,28 +75,31 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    _items = List.from(widget.items);
-    // Pre-load selected delivery address
-    if (widget.orderMode == OrderMode.delivery) {
-      _deliveryAddress = AddressService().selectedAddress;
-    }
+    // Pre-load selected delivery address if mode is delivery
+    Future.microtask(() {
+      final orderMode = context.read<CartProvider>().orderMode;
+      if (orderMode == OrderMode.delivery) {
+        setState(() {
+          _deliveryAddress = AddressService().selectedAddress;
+        });
+      }
+    });
   }
 
   // ── Computed subtotal ─────────────────────────────────────────────────────
-  double get _subtotal =>
-      _items.fold(0, (sum, e) => sum + e.price * e.qty);
-  double get _gst => _subtotal * 0.05;
+  double _subtotal(CartProvider cart) => cart.subtotal;
+  double _gst(CartProvider cart) => cart.subtotal * 0.05;
   static const double _serviceCharge = 1.00;
   static const double _loyaltyDiscount = 2.25;
-  double get _total =>
-      _subtotal +
-      _gst +
+  double _total(CartProvider cart) =>
+      cart.subtotal +
+      _gst(cart) +
       _serviceCharge -
       (_useLoyalty ? _loyaltyDiscount : 0);
 
   // ── Order mode banner data ────────────────────────────────────────────────
-  ({IconData icon, String label, Color bg}) get _modeData {
-    switch (widget.orderMode) {
+  ({IconData icon, String label, Color bg}) _getModeData(OrderMode mode) {
+    switch (mode) {
       case OrderMode.dineIn:
         return (
           icon: Icons.table_restaurant_rounded,
@@ -123,10 +121,8 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  int get _totalItems => _items.fold(0, (s, e) => s + e.qty);
-
   // ── Cart item row ─────────────────────────────────────────────────────────
-  Widget _buildCartItem(CartEntry entry, int index) {
+  Widget _buildCartItem(CartProvider cart, CartEntry entry, int index) {
     return Dismissible(
       key: Key(entry.name + index.toString()),
       direction: DismissDirection.endToStart,
@@ -140,7 +136,7 @@ class _CartScreenState extends State<CartScreen> {
         child: const Icon(Icons.delete_outline_rounded,
             color: Color(0xFFD44040), size: 24),
       ),
-      onDismissed: (_) => setState(() => _items.removeAt(index)),
+      onDismissed: (_) => cart.removeItemAt(index),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
@@ -171,7 +167,23 @@ class _CartScreenState extends State<CartScreen> {
                         width: 64,
                         height: 64,
                         color: const Color(0xFFEFEEEA),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _priceGreen,
+                          ),
+                        ),
                       ),
+                errorBuilder: (ctx, err, stack) => Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0EFEA),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.restaurant_rounded,
+                      color: Color(0xFFCECCC8), size: 24),
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -192,6 +204,39 @@ class _CartScreenState extends State<CartScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+                  if (entry.selectedOptions.isNotEmpty) ...[
+                    Text(
+                      entry.selectedOptions.join(', '),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF8A8884),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                  if (entry.instructions != null) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.edit_note_rounded, size: 14, color: Color(0xFFC77A1A)),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            entry.instructions!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontStyle: FontStyle.italic,
+                              color: Color(0xFFC77A1A),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   Text(
                     '₹${entry.price.toStringAsFixed(2)}',
                     style: const TextStyle(
@@ -205,45 +250,53 @@ class _CartScreenState extends State<CartScreen> {
             ),
 
             // Delete + stepper
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                GestureDetector(
-                  onTap: () => setState(() => _items.removeAt(index)),
-                  child: const Icon(Icons.delete_outline_rounded,
-                      size: 20, color: Color(0xFFCECCC8)),
-                ),
-                const SizedBox(height: 10),
-                // − qty +
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _stepBtn(Icons.remove, () {
-                      setState(() {
-                        if (entry.qty > 1) {
-                          entry.qty--;
-                        } else {
-                          _items.removeAt(index);
-                        }
-                      });
-                    }),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        '${entry.qty}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1C1A17),
-                        ),
-                      ),
+            SizedBox(
+              width: 90,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  GestureDetector(
+                    onTap: () => cart.removeItemAt(index),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      child: const Icon(Icons.close_rounded,
+                          size: 18, color: Color(0xFFCECCC8)),
                     ),
-                    _stepBtn(Icons.add, () {
-                      setState(() => entry.qty++);
-                    }),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 8),
+                  // − qty +
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F6F2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _stepBtn(Icons.remove, () {
+                          cart.decrementQuantity(index);
+                        }),
+                        SizedBox(
+                          width: 24,
+                          child: Text(
+                            '${entry.qty}',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1C1A17),
+                            ),
+                          ),
+                        ),
+                        _stepBtn(Icons.add, () {
+                          cart.incrementQuantity(index);
+                        }),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -252,7 +305,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   // ── Suggestion card ───────────────────────────────────────────────────────
-  Widget _buildSuggestion(_Suggestion s) {
+  Widget _buildSuggestion(CartProvider cart, _Suggestion s) {
     return Container(
       width: 110,
       margin: const EdgeInsets.only(right: 12),
@@ -268,6 +321,13 @@ class _CartScreenState extends State<CartScreen> {
                   width: 110,
                   height: 90,
                   fit: BoxFit.cover,
+                  errorBuilder: (ctx, err, stack) => Container(
+                    width: 110,
+                    height: 90,
+                    color: const Color(0xFFF0EFEA),
+                    child: const Icon(Icons.restaurant_rounded,
+                        color: Color(0xFFCECCC8), size: 30),
+                  ),
                 ),
               ),
               if (s.isNew)
@@ -296,19 +356,12 @@ class _CartScreenState extends State<CartScreen> {
                 right: 6,
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      final idx = _items.indexWhere((e) => e.name == s.name);
-                      if (idx >= 0) {
-                        _items[idx].qty++;
-                      } else {
-                        _items.add(CartEntry(
-                          name: s.name,
-                          price: s.price,
-                          imageUrl: s.imageUrl,
-                          qty: 1,
-                        ));
-                      }
-                    });
+                    cart.addItem(CartEntry(
+                      name: s.name,
+                      price: s.price,
+                      imageUrl: s.imageUrl,
+                      qty: 1,
+                    ));
                   },
                   child: Container(
                     width: 26,
@@ -353,14 +406,23 @@ class _CartScreenState extends State<CartScreen> {
   Widget _stepBtn(IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 28,
-        height: 28,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFCECCC8)),
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.white,
+          border: Border.all(color: const Color(0xFFE8E5DF)),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Icon(icon, size: 14, color: _priceGreen),
+        child: Icon(icon, size: 12, color: _priceGreen),
       ),
     );
   }
@@ -395,47 +457,16 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // ── Bottom nav item ───────────────────────────────────────────────────────
-  Widget _navItem(IconData icon, String label, bool active, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap ?? (active ? null : () => Navigator.of(context).pop()),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (active)
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: _darkGreen,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            )
-          else
-            Icon(icon, color: const Color(0xFFB0AEAA), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-              color:
-                  active ? _darkGreen : const Color(0xFFB0AEAA),
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
-    final mode = _modeData;
+    final cart = context.watch<CartProvider>();
+    final mode = _getModeData(cart.orderMode);
+    final totalItems = cart.totalItems;
 
     // ── Empty cart state ──────────────────────────────────────────────────────
-    if (_items.isEmpty) {
+    if (cart.isEmpty) {
       return Scaffold(
         backgroundColor: _bgCream,
         body: SafeArea(
@@ -453,7 +484,7 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                     const Spacer(),
                     const Text(
-                      'Votre Sélection',
+                      'Cart Selection',
                       style: TextStyle(
                         fontSize: 20,
                         fontFamily: 'Georgia',
@@ -549,7 +580,7 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
         ),
-        bottomNavigationBar: _buildBottomNav(),
+        bottomNavigationBar: const CustomBottomNavBar(activeIndex: 3),
       );
     }
 
@@ -570,7 +601,7 @@ class _CartScreenState extends State<CartScreen> {
                         size: 26, color: Color(0xFF1C1A17)),
                   ),
                   const Text(
-                    'Votre Sélection',
+                    'Cart Section',
                     style: TextStyle(
                       fontSize: 20,
                       fontFamily: 'Georgia',
@@ -601,7 +632,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
 
             // ── Delivery address banner (delivery mode only) ─────────────────
-            if (widget.orderMode == OrderMode.delivery)
+            if (cart.orderMode == OrderMode.delivery)
               _buildDeliveryAddressBanner(),
 
             // ── Scrollable body ─────────────────────────────────────────────
@@ -668,20 +699,28 @@ class _CartScreenState extends State<CartScreen> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Text(
-                          'Panier',
+                          'Cart',
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 32,
                             fontWeight: FontWeight.w900,
                             fontFamily: 'Georgia',
                             color: Color(0xFF1C1A17),
+                            letterSpacing: -0.5,
                           ),
                         ),
-                        Text(
-                          '$_totalItems ${_totalItems == 1 ? 'Item' : 'Items'}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF9A9690),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAE8E4),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '$totalItems ${totalItems == 1 ? 'Item' : 'Items'}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF6A6865),
+                            ),
                           ),
                         ),
                       ],
@@ -689,7 +728,7 @@ class _CartScreenState extends State<CartScreen> {
                     const SizedBox(height: 16),
 
                     // ── Cart items ─────────────────────────────────────────
-                    if (_items.isEmpty)
+                    if (cart.isEmpty)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 32),
@@ -721,8 +760,8 @@ class _CartScreenState extends State<CartScreen> {
                       )
                     else
                       ...List.generate(
-                        _items.length,
-                        (i) => _buildCartItem(_items[i], i),
+                        cart.items.length,
+                        (i) => _buildCartItem(cart, cart.items[i], i),
                       ),
 
                     const SizedBox(height: 8),
@@ -744,7 +783,7 @@ class _CartScreenState extends State<CartScreen> {
                         scrollDirection: Axis.horizontal,
                         itemCount: _suggestions.length,
                         itemBuilder: (_, i) =>
-                            _buildSuggestion(_suggestions[i]),
+                            _buildSuggestion(cart, _suggestions[i]),
                       ),
                     ),
 
@@ -804,9 +843,10 @@ class _CartScreenState extends State<CartScreen> {
                           Switch(
                             value: _useLoyalty,
                             onChanged: (v) => setState(() => _useLoyalty = v),
-                            activeThumbColor: _priceGreen,
-                            activeTrackColor:
-                                _priceGreen.withValues(alpha: 0.3),
+                            activeColor: Colors.white,
+                            activeTrackColor: _priceGreen,
+                            inactiveThumbColor: Colors.white,
+                            inactiveTrackColor: const Color(0xFFEAE8E4),
                           ),
                         ],
                       ),
@@ -830,21 +870,18 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       child: Column(
                         children: [
-                          _summaryRow('SUBTOTAL', _subtotal),
-                          _summaryRow('GST (5%)', _gst),
+                          _summaryRow('SUBTOTAL', _subtotal(cart)),
+                          _summaryRow('GST (5%)', _gst(cart)),
                           _summaryRow('SERVICE CHARGE', _serviceCharge),
                           if (_useLoyalty)
-                            _summaryRow('LOYALTY DISCOUNT',
-                                -_loyaltyDiscount,
+                            _summaryRow('LOYALTY DISCOUNT', -_loyaltyDiscount,
                                 color: _priceGreen),
                           const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Divider(
-                                color: Color(0xFFEAE8E4), height: 1),
+                            child: Divider(color: Color(0xFFEAE8E4), height: 1),
                           ),
-                          _summaryRow('TOTAL', _total,
-                              bold: true,
-                              color: const Color(0xFF1C1A17)),
+                          _summaryRow('TOTAL', _total(cart),
+                              bold: true, color: const Color(0xFF1C1A17)),
                         ],
                       ),
                     ),
@@ -852,52 +889,64 @@ class _CartScreenState extends State<CartScreen> {
                     const SizedBox(height: 24),
 
                     // ── Proceed to Checkout ────────────────────────────────
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => CheckoutScreen(
-                              items: _items,
-                              orderMode: widget.orderMode,
-                              subtotal: _subtotal,
-                              gst: _gst,
-                              serviceCharge: _serviceCharge,
-                              loyaltyDiscount: _useLoyalty ? _loyaltyDiscount : 0,
-                              total: _total,
-                            ),
+                    Container(
+                      width: double.infinity,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: _darkGreen,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _darkGreen.withValues(alpha: 0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 8),
                           ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        decoration: BoxDecoration(
-                          color: _darkGreen,
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              'Proceed to Checkout',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => CheckoutScreen(
+                                  items: cart.items,
+                                  orderMode: cart.orderMode,
+                                  subtotal: _subtotal(cart),
+                                  gst: _gst(cart),
+                                  serviceCharge: _serviceCharge,
+                                  loyaltyDiscount:
+                                      _useLoyalty ? _loyaltyDiscount : 0,
+                                  total: _total(cart),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Proceed to Checkout',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2,
+                                ),
                               ),
-                              child: const Icon(Icons.arrow_forward_rounded,
-                                  color: Colors.white, size: 16),
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.arrow_forward_rounded,
+                                    color: Colors.white, size: 18),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -907,7 +956,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
 
             // ── Bottom Navigation ───────────────────────────────────────────
-            _buildBottomNav(),
+            const CustomBottomNavBar(activeIndex: 3),
           ],
         ),
       ),
@@ -1016,63 +1065,4 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _navItem(
-              Icons.home_outlined, 'HOME', false,
-              onTap: () => Navigator.of(context).popUntil(
-                  (r) => r.settings.name == '/home' || r.isFirst)),
-          _navItem(
-              Icons.restaurant_menu_rounded, 'MENU', false,
-              onTap: () {
-                Navigator.of(context).popUntil(
-                    (r) => r.settings.name == '/home' || r.isFirst);
-                Future.microtask(() => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const MenuScreen(),
-                        settings: const RouteSettings(name: '/menu'),
-                      ),
-                    ));
-              }),
-          _navItem(Icons.receipt_long_outlined, 'ORDERS', false,
-              onTap: () {
-                Navigator.of(context).popUntil(
-                    (r) => r.settings.name == '/home' || r.isFirst);
-                Future.microtask(() => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const OrderHistoryScreen(),
-                        settings: const RouteSettings(name: '/orders'),
-                      ),
-                    ));
-              }),
-          _navItem(Icons.shopping_cart_rounded, 'CART', true),
-          _navItem(Icons.person_outline_rounded, 'PROFILE', false,
-              onTap: () {
-                Navigator.of(context).popUntil(
-                    (r) => r.settings.name == '/home' || r.isFirst);
-                Future.microtask(() => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ProfileScreen(),
-                        settings: const RouteSettings(name: '/profile'),
-                      ),
-                    ));
-              }),
-        ],
-      ),
-    );
-  }
 }

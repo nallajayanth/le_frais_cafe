@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import '../../models/app_cart.dart';
 import '../auth/login_screen.dart';
 import '../cart/cart_screen.dart';
 import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
+import '../address/address_picker_sheet.dart';
+
+import '../shared/custom_bottom_nav_bar.dart';
 
 class _ProfileTileData {
   final IconData icon;
@@ -41,6 +43,17 @@ class ProfileScreen extends StatelessWidget {
         icon: Icons.location_on_outlined,
         title: 'Saved Addresses',
         subtitle: 'Manage delivery destinations',
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) => AddressPickerSheet(
+              selected: null,
+              onSelected: (_) {}, // Profile screen just manages addresses
+            ),
+          );
+        },
       ),
       _ProfileTileData(
         icon: Icons.notifications_none_rounded,
@@ -67,67 +80,7 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFFCFCF9),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _navItem(context, Icons.home_outlined, 'HOME', false,
-                  onTap: () => Navigator.of(context).popUntil(
-                      (r) => r.settings.name == '/home' || r.isFirst)),
-              _navItem(context, Icons.restaurant_menu_rounded, 'MENU', false,
-                  onTap: () {
-                    Navigator.of(context).popUntil(
-                        (r) => r.settings.name == '/home' || r.isFirst);
-                    Future.microtask(() => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const MenuScreen(),
-                            settings: const RouteSettings(name: '/menu'),
-                          ),
-                        ));
-                  }),
-              _navItem(context, Icons.receipt_long_outlined, 'ORDERS', false,
-                  onTap: () {
-                    Navigator.of(context).popUntil(
-                        (r) => r.settings.name == '/home' || r.isFirst);
-                    Future.microtask(() => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const OrderHistoryScreen(),
-                            settings: const RouteSettings(name: '/orders'),
-                          ),
-                        ));
-                  }),
-              _navItem(context, Icons.shopping_cart_rounded, 'CART', false,
-                  onTap: () {
-                    Navigator.of(context).popUntil(
-                        (r) => r.settings.name == '/home' || r.isFirst);
-                    Future.microtask(() => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => CartScreen(
-                              items: AppCart.items,
-                              orderMode: AppCart.orderMode,
-                            ),
-                            settings: const RouteSettings(name: '/cart'),
-                          ),
-                        ));
-                  }),
-              _navItem(
-                  context, Icons.person_outline_rounded, 'PROFILE', true),
-            ],
-          ),
-        ),
-      ),
+      bottomNavigationBar: const CustomBottomNavBar(activeIndex: 4),
       body: SafeArea(
         child: Column(
           children: [
@@ -530,42 +483,6 @@ class ProfileScreen extends StatelessWidget {
                 color: Color(0xFFB3B1AC), size: 22),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _navItem(BuildContext context, IconData icon, String label,
-      bool active, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (active)
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E3D2A),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            )
-          else
-            Icon(icon, color: const Color(0xFFB0AEAA), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 9,
-              fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-              color: active
-                  ? const Color(0xFF1E3D2A)
-                  : const Color(0xFFB0AEAA),
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
       ),
     );
   }
