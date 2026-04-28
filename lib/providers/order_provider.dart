@@ -92,13 +92,15 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  /// Get order status
+  /// Get order status (lightweight poll — syncs into currentOrder and history)
   Future<bool> loadOrderStatus(String orderId) async {
     try {
-      _currentOrderStatus = await orderService.getOrderStatus(orderId);
+      final status = await orderService.getOrderStatus(orderId);
+      updateOrderStatus(status); // notifies internally
       return true;
     } on OrderException catch (e) {
       _error = e.message;
+      notifyListeners();
       return false;
     }
   }
@@ -127,9 +129,23 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  /// Update order status (for real-time tracking)
+  /// Update order status from real-time source (WebSocket or poll)
   void updateOrderStatus(OrderStatus status) {
     _currentOrderStatus = status;
+    // Keep _currentOrder in sync so the tracker UI always reflects the latest status
+    if (_currentOrder != null && _currentOrder!.id == status.orderId) {
+      _currentOrder = _currentOrder!.copyWith(
+        status: status.status,
+        estimatedTime: status.estimatedTimeRemaining > 0
+            ? status.estimatedTimeRemaining
+            : null,
+      );
+    }
+    // Keep history list in sync so the history screen reflects live statuses
+    final idx = _orderHistory.indexWhere((o) => o.id == status.orderId);
+    if (idx != -1) {
+      _orderHistory[idx] = _orderHistory[idx].copyWith(status: status.status);
+    }
     notifyListeners();
   }
 

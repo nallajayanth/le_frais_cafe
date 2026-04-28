@@ -18,7 +18,8 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
-  String _selectedCategory = 'All';
+  // null = "All" selected
+  String? _selectedCategoryId;
   String _searchQuery = '';
   bool _showSearch = false;
   final TextEditingController _searchController = TextEditingController();
@@ -55,28 +56,22 @@ class _MenuScreenState extends State<MenuScreen> {
         : List<MenuItem>.from(items);
   }
 
-  List<String> get _categories {
+  // Returns (filterId, displayName) — filterId null = All
+  List<(String?, String)> get _categories {
     final provider = context.read<MenuProvider>();
     if (provider.categories.isEmpty) {
-      return [
-        'All',
-        'Appetizers',
-        'Chinese Starters',
-        'Momos',
-        'Burgers',
-        'Noodles',
-        'Rice',
-      ];
+      const fallback = ['Appetizers', 'Chinese Starters', 'Momos', 'Burgers', 'Noodles', 'Rice'];
+      return [(null, 'All'), ...fallback.map((n) => (n, n))];
     }
-    return ['All', ...provider.categories.map((c) => c.name).toList()];
+    return [(null, 'All'), ...provider.categories.map((c) => (c.id, c.name))];
   }
 
   List<MenuItem> get _visibleItems {
     List<MenuItem> items;
-    if (_selectedCategory == 'All') {
+    if (_selectedCategoryId == null) {
       items = _allItems;
     } else {
-      items = _allItems.where((i) => i.category == _selectedCategory).toList();
+      items = _allItems.where((i) => i.category == _selectedCategoryId).toList();
     }
 
     if (_searchQuery.isNotEmpty) {
@@ -196,10 +191,18 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   // ── Category Chip ──────────────────────────────────────────────────────
-  Widget _categoryChip(String label) {
-    final active = _selectedCategory == label;
+  Widget _categoryChip((String?, String) option) {
+    final (filterId, label) = option;
+    final active = filterId == _selectedCategoryId;
     return GestureDetector(
-      onTap: () => setState(() => _selectedCategory = label),
+      onTap: () => setState(() {
+        _selectedCategoryId = filterId;
+        if (filterId != null) {
+          _searchQuery = '';
+          _searchController.clear();
+          _showSearch = false;
+        }
+      }),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
@@ -249,6 +252,7 @@ class _MenuScreenState extends State<MenuScreen> {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ItemDetailScreen(
+            menuItemId: item.id,
             name: item.name,
             description: item.description,
             price: item.price,
@@ -460,6 +464,7 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    context.watch<MenuProvider>(); // triggers rebuild when menu items / categories load
     final items = _visibleItems;
 
     return Scaffold(
@@ -473,17 +478,75 @@ class _MenuScreenState extends State<MenuScreen> {
             if (_showSearch)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (v) => setState(() => _searchQuery = v),
-                  decoration: InputDecoration(
-                    hintText: 'Search for flavors...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    onChanged: (v) => setState(() {
+                      _searchQuery = v;
+                      if (v.isNotEmpty) _selectedCategoryId = null;
+                    }),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF1C1A17),
+                      fontWeight: FontWeight.w500,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search menu items...',
+                      hintStyle: const TextStyle(
+                        color: Color(0xFFB0AEAA),
+                        fontSize: 14,
+                      ),
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.only(left: 14, right: 8),
+                        child: Icon(Icons.search_rounded,
+                            size: 20, color: Color(0xFF1E5C3A)),
+                      ),
+                      prefixIconConstraints:
+                          const BoxConstraints(minWidth: 44, minHeight: 44),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () => setState(() {
+                                _searchQuery = '';
+                                _searchController.clear();
+                              }),
+                              child: const Padding(
+                                padding: EdgeInsets.only(right: 12),
+                                child: Icon(Icons.close_rounded,
+                                    size: 18, color: Color(0xFF9A9690)),
+                              ),
+                            )
+                          : null,
+                      suffixIconConstraints:
+                          const BoxConstraints(minWidth: 40, minHeight: 40),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(
+                            color: Color(0xFF1E5C3A), width: 1.5),
+                      ),
                     ),
                   ),
                 ),
@@ -505,14 +568,50 @@ class _MenuScreenState extends State<MenuScreen> {
 
             // ── Menu Items ──────────────────────────────────────────────────
             Expanded(
-              child: items.isEmpty 
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.restaurant_rounded, size: 64, color: Colors.black.withValues(alpha: 0.1)),
-                    const SizedBox(height: 16),
-                    const Text('No items found in this category.', style: TextStyle(color: Color(0xFF6A6865))),
-                  ],
+              child: items.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 76,
+                        height: 76,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.restaurant_rounded,
+                            size: 34, color: Color(0xFFCECCC8)),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _searchQuery.isNotEmpty
+                            ? 'No results for "$_searchQuery"'
+                            : 'Nothing here yet',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontFamily: 'Georgia',
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF3A3835),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _searchQuery.isNotEmpty
+                            ? 'Try a different search term.'
+                            : 'Check back soon for new additions.',
+                        style: const TextStyle(
+                            fontSize: 13, color: Color(0xFF9A9690)),
+                      ),
+                    ],
+                  ),
                 )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),

@@ -5,6 +5,7 @@ import '../pickup/pickup_screen.dart';
 import '../delivery/delivery_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/cart_entry.dart';
 import '../profile/profile_screen.dart';
 import '../cart/cart_screen.dart';
@@ -308,6 +309,13 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen>
     return shouldExit ?? false;
   }
 
+  String _getTimeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning! ☀️';
+    if (hour < 17) return 'Good afternoon! 👋';
+    return 'Good evening! 🌙';
+  }
+
   void _onContinue() {
     final cart = context.read<CartProvider>();
     cart.updateOrderMode(_selectedPreference);
@@ -447,14 +455,19 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen>
           opacity: _fadeAnimation,
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 140),
-            child: Column(
+            child: Builder(
+              builder: (context) {
+                final auth = context.watch<AuthProvider>();
+                final firstName = auth.currentUser?.firstName;
+                final greeting = _getTimeGreeting();
+                return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Greeting
                 const SizedBox(height: 4),
-                const Text(
-                  'Good day! 👋',
-                  style: TextStyle(
+                Text(
+                  greeting,
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF8A7D6A),
@@ -462,9 +475,11 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen>
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'How would you\nlike to order?',
-                  style: TextStyle(
+                Text(
+                  firstName != null && firstName.isNotEmpty
+                      ? 'Hi, $firstName!\nHow would you order?'
+                      : 'How would you\nlike to order?',
+                  style: const TextStyle(
                     fontSize: 34,
                     fontWeight: FontWeight.w900,
                     fontFamily: 'Georgia',
@@ -568,6 +583,8 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen>
                   ),
                 ),
               ],
+            );
+              },
             ),
           ),
         ),

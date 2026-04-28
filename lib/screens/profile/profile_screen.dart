@@ -1,89 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../auth/login_screen.dart';
-import '../cart/cart_screen.dart';
 import '../order/order_history_screen.dart';
 import '../address/address_picker_sheet.dart';
+import '../notifications/notifications_screen.dart';
+import '../support/support_screen.dart';
 import '../shared/custom_bottom_nav_bar.dart';
-
-class _ProfileTileData {
-  final IconData icon;
-  final Color iconBg;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final bool hasNotification;
-  final VoidCallback? onTap;
-
-  _ProfileTileData({
-    required this.icon,
-    required this.iconBg,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    this.hasNotification = false,
-    this.onTap,
-  });
-}
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final List<_ProfileTileData> tiles = [
-      _ProfileTileData(
+    final auth = context.watch<AuthProvider>();
+    final notifProvider = context.watch<NotificationProvider>();
+    final user = auth.currentUser;
+
+    final firstName = user?.firstName ?? 'Guest';
+    final lastName = user?.lastName ?? '';
+    final fullName = '$firstName $lastName'.trim();
+    final email = user?.email ?? '';
+    final loyaltyPoints = user?.loyaltyPoints ?? 0;
+    final nextReward = 3000;
+    final progress = (loyaltyPoints / nextReward).clamp(0.0, 1.0);
+    final pointsToGo = (nextReward - loyaltyPoints).clamp(0, nextReward);
+
+    final tiles = [
+      _TileData(
         icon: Icons.history_rounded,
         iconBg: const Color(0xFFE9F5EC),
         iconColor: const Color(0xFF1E5C3A),
         title: 'Order History',
-        subtitle: 'View your past artisanal treats',
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-          );
-        },
+        subtitle: 'View your past orders',
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
+        ),
       ),
-      _ProfileTileData(
+      _TileData(
         icon: Icons.location_on_outlined,
         iconBg: const Color(0xFFEDF2FF),
         iconColor: const Color(0xFF3B5BDB),
         title: 'Saved Addresses',
         subtitle: 'Manage delivery destinations',
-        onTap: () {
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (ctx) => AddressPickerSheet(
-              selected: null,
-              onSelected: (_) {},
-            ),
-          );
-        },
+        onTap: () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (ctx) => AddressPickerSheet(
+            selected: null,
+            onSelected: (_) {},
+          ),
+        ),
       ),
-      _ProfileTileData(
+      _TileData(
         icon: Icons.notifications_none_rounded,
         iconBg: const Color(0xFFFFF3E0),
         iconColor: const Color(0xFFC88B1A),
         title: 'Notifications',
         subtitle: 'Manage alerts and news',
-        hasNotification: true,
+        badge: notifProvider.unreadCount > 0
+            ? notifProvider.unreadCount
+            : null,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+        ),
       ),
-      _ProfileTileData(
+      _TileData(
         icon: Icons.account_balance_wallet_outlined,
         iconBg: const Color(0xFFEEF4FF),
         iconColor: const Color(0xFF5B6AF0),
         title: 'Payments',
         subtitle: 'Default methods and billing',
       ),
-      _ProfileTileData(
+      _TileData(
         icon: Icons.help_outline_rounded,
         iconBg: const Color(0xFFF6F0FF),
         iconColor: const Color(0xFF8B5CF6),
         title: 'Help & Support',
         subtitle: 'FAQs and direct assistance',
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SupportScreen()),
+        ),
       ),
-      _ProfileTileData(
+      _TileData(
         icon: Icons.card_giftcard_rounded,
         iconBg: const Color(0xFFFFF0F6),
         iconColor: const Color(0xFFE64980),
@@ -97,7 +98,6 @@ class ProfileScreen extends StatelessWidget {
       bottomNavigationBar: const CustomBottomNavBar(activeIndex: 4),
       body: Stack(
         children: [
-          // Header gradient
           Positioned(
             top: 0,
             left: 0,
@@ -114,13 +114,12 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           ),
-
           SafeArea(
             child: Column(
               children: [
-                // App Bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 14),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -159,8 +158,6 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-
-                // Scrollable body
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -168,24 +165,28 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         const SizedBox(height: 8),
 
-                        // Avatar section with gold ring
+                        // Avatar
                         Stack(
                           alignment: Alignment.center,
                           children: [
-                            // Gold ring
                             Container(
                               width: 118,
                               height: 118,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFFC88B1A), Color(0xFFDAA520), Color(0xFF8B5A10)],
+                                  colors: [
+                                    Color(0xFFC88B1A),
+                                    Color(0xFFDAA520),
+                                    Color(0xFF8B5A10),
+                                  ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFFC88B1A).withValues(alpha: 0.4),
+                                    color: const Color(0xFFC88B1A)
+                                        .withValues(alpha: 0.4),
                                     blurRadius: 20,
                                     offset: const Offset(0, 6),
                                     spreadRadius: -4,
@@ -193,21 +194,27 @@ class ProfileScreen extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            // Avatar
                             Container(
                               width: 106,
                               height: 106,
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                image: DecorationImage(
-                                  image: NetworkImage(
-                                    'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=400&auto=format&fit=crop',
+                                color: const Color(0xFF1E5C3A),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  firstName.isNotEmpty
+                                      ? firstName[0].toUpperCase()
+                                      : 'U',
+                                  style: const TextStyle(
+                                    fontSize: 42,
+                                    fontFamily: 'Georgia',
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
                                   ),
-                                  fit: BoxFit.cover,
                                 ),
                               ),
                             ),
-                            // Edit button
                             Positioned(
                               bottom: 4,
                               right: 4,
@@ -218,24 +225,29 @@ class ProfileScreen extends StatelessWidget {
                                   color: Color(0xFFC88B1A),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.edit, color: Colors.white, size: 13),
+                                child: const Icon(Icons.edit,
+                                    color: Colors.white, size: 13),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 14),
 
-                        // Member badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFFFCD3AA), Color(0xFFFFE8CC)],
+                              colors: [
+                                Color(0xFFFCD3AA),
+                                Color(0xFFFFE8CC),
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFC88B1A).withValues(alpha: 0.2),
+                                color: const Color(0xFFC88B1A)
+                                    .withValues(alpha: 0.2),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               ),
@@ -244,7 +256,8 @@ class ProfileScreen extends StatelessWidget {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.verified_rounded, size: 14, color: Color(0xFF8B5A10)),
+                              Icon(Icons.verified_rounded,
+                                  size: 14, color: Color(0xFF8B5A10)),
                               SizedBox(width: 5),
                               Text(
                                 'GOLD MACARON MEMBER',
@@ -260,24 +273,26 @@ class ProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
 
-                        const Text(
-                          'James Thorne',
-                          style: TextStyle(
+                        Text(
+                          fullName,
+                          style: const TextStyle(
                             fontFamily: 'Georgia',
-                            fontSize: 30,
+                            fontSize: 28,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFF0F2A1A),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'james.thorne@artisan.mail',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF6F6E6B),
+                        if (email.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6F6E6B),
+                            ),
                           ),
-                        ),
+                        ],
                         const SizedBox(height: 28),
 
                         // Loyalty card
@@ -286,14 +301,19 @@ class ProfileScreen extends StatelessWidget {
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF0F2A1A), Color(0xFF1E4D30), Color(0xFF1A3D26)],
+                              colors: [
+                                Color(0xFF0F2A1A),
+                                Color(0xFF1E4D30),
+                                Color(0xFF1A3D26),
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(28),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF0F2A1A).withValues(alpha: 0.4),
+                                color: const Color(0xFF0F2A1A)
+                                    .withValues(alpha: 0.4),
                                 blurRadius: 24,
                                 offset: const Offset(0, 8),
                                 spreadRadius: -4,
@@ -304,7 +324,8 @@ class ProfileScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text(
                                     'LOYALTY BALANCE',
@@ -316,12 +337,15 @@ class ProfileScreen extends StatelessWidget {
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 5),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFC88B1A).withValues(alpha: 0.2),
+                                      color: const Color(0xFFC88B1A)
+                                          .withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: const Color(0xFFC88B1A).withValues(alpha: 0.3),
+                                        color: const Color(0xFFC88B1A)
+                                            .withValues(alpha: 0.3),
                                       ),
                                     ),
                                     child: const Text(
@@ -338,12 +362,19 @@ class ProfileScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 12),
                               Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.baseline,
                                 textBaseline: TextBaseline.alphabetic,
                                 children: [
-                                  const Text(
-                                    '2,400',
-                                    style: TextStyle(
+                                  Text(
+                                    loyaltyPoints
+                                        .toString()
+                                        .replaceAllMapped(
+                                          RegExp(
+                                              r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                          (m) => '${m[1]},',
+                                        ),
+                                    style: const TextStyle(
                                       fontSize: 52,
                                       fontWeight: FontWeight.w900,
                                       color: Colors.white,
@@ -372,11 +403,14 @@ class ProfileScreen extends StatelessWidget {
                                 ),
                                 child: FractionallySizedBox(
                                   alignment: Alignment.centerLeft,
-                                  widthFactor: 2400 / 3000,
+                                  widthFactor: progress,
                                   child: Container(
                                     decoration: BoxDecoration(
                                       gradient: const LinearGradient(
-                                        colors: [Color(0xFFC88B1A), Color(0xFFDAA520)],
+                                        colors: [
+                                          Color(0xFFC88B1A),
+                                          Color(0xFFDAA520),
+                                        ],
                                       ),
                                       borderRadius: BorderRadius.circular(3),
                                     ),
@@ -385,19 +419,20 @@ class ProfileScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 10),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: const [
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
                                   Text(
-                                    'Next reward at 3,000 pts',
-                                    style: TextStyle(
+                                    'Next reward at ${nextReward.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')} pts',
+                                    style: const TextStyle(
                                       fontSize: 11,
                                       color: Colors.white54,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   Text(
-                                    '600 pts to go',
-                                    style: TextStyle(
+                                    '$pointsToGo pts to go',
+                                    style: const TextStyle(
                                       fontSize: 11,
                                       color: Color(0xFFC88B1A),
                                       fontWeight: FontWeight.w800,
@@ -411,14 +446,18 @@ class ProfileScreen extends StatelessWidget {
                                 height: 50,
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
+                                    colors: [
+                                      Color(0xFFB8860B),
+                                      Color(0xFFDAA520),
+                                    ],
                                     begin: Alignment.centerLeft,
                                     end: Alignment.centerRight,
                                   ),
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFC88B1A).withValues(alpha: 0.35),
+                                      color: const Color(0xFFC88B1A)
+                                          .withValues(alpha: 0.35),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -449,7 +488,6 @@ class ProfileScreen extends StatelessWidget {
 
                         const SizedBox(height: 32),
 
-                        // Section header
                         const Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
@@ -466,116 +504,23 @@ class ProfileScreen extends StatelessWidget {
                         ...tiles.map((t) => _buildTile(t)),
                         const SizedBox(height: 16),
 
-                        // Sign out
+                        // Sign out button
                         GestureDetector(
-                          onTap: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => Dialog(
-                                backgroundColor: Colors.transparent,
-                                child: Container(
-                                  padding: const EdgeInsets.all(28),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(28),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.12),
-                                        blurRadius: 30,
-                                        offset: const Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        width: 56,
-                                        height: 56,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFFFEE2E2),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.logout_rounded, color: Color(0xFFDC2626), size: 26),
-                                      ),
-                                      const SizedBox(height: 18),
-                                      const Text(
-                                        'Sign Out?',
-                                        style: TextStyle(
-                                          fontFamily: 'Georgia',
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 22,
-                                          color: Color(0xFF0F2A1A),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'You will be signed out of Le Frais.',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(fontSize: 14, color: Color(0xFF6A6865), height: 1.5),
-                                      ),
-                                      const SizedBox(height: 24),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: GestureDetector(
-                                              onTap: () => Navigator.of(ctx).pop(false),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFF0F0EC),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                ),
-                                                child: const Center(
-                                                  child: Text('Cancel',
-                                                      style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF3A3835))),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: GestureDetector(
-                                              onTap: () => Navigator.of(ctx).pop(true),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFFFEDED),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                ),
-                                                child: const Center(
-                                                  child: Text('Sign Out',
-                                                      style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                            if (confirm == true && context.mounted) {
-                              Navigator.of(context).pushAndRemoveUntil(
-                                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                                (route) => false,
-                              );
-                            }
-                          },
+                          onTap: () => _confirmSignOut(context, auth),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(vertical: 18),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFEDED),
                               borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: const Color(0xFFFECACA), width: 1.5),
+                              border: Border.all(
+                                  color: const Color(0xFFFECACA), width: 1.5),
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.logout_rounded, size: 18, color: Color(0xFFDC2626)),
+                                Icon(Icons.logout_rounded,
+                                    size: 18, color: Color(0xFFDC2626)),
                                 SizedBox(width: 8),
                                 Text(
                                   'Sign Out',
@@ -602,7 +547,116 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTile(_ProfileTileData data) {
+  Future<void> _confirmSignOut(
+      BuildContext context, AuthProvider auth) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFEE2E2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded,
+                    color: Color(0xFFDC2626), size: 26),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Sign Out?',
+                style: TextStyle(
+                  fontFamily: 'Georgia',
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                  color: Color(0xFF0F2A1A),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'You will be signed out of Le Frais.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF6A6865),
+                    height: 1.5),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(false),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F0EC),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Text('Cancel',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF3A3835))),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(ctx).pop(true),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFEDED),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(
+                          child: Text('Sign Out',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFDC2626))),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirm == true && context.mounted) {
+      await auth.logout();
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
+  Widget _buildTile(_TileData data) {
     return GestureDetector(
       onTap: data.onTap,
       child: Container(
@@ -655,14 +709,21 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-            if (data.hasNotification)
+            if (data.badge != null && data.badge! > 0)
               Container(
                 margin: const EdgeInsets.only(right: 8),
-                width: 8,
-                height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFC88B1A),
-                  shape: BoxShape.circle,
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC88B1A),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  data.badge! > 99 ? '99+' : '${data.badge}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             const Icon(Icons.arrow_forward_ios_rounded,
@@ -672,4 +733,24 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TileData {
+  final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final int? badge;
+  final VoidCallback? onTap;
+
+  const _TileData({
+    required this.icon,
+    required this.iconBg,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    this.badge,
+    this.onTap,
+  });
 }

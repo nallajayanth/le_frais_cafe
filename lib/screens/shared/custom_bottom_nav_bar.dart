@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
 import '../order/order_preference_screen.dart';
@@ -154,7 +155,10 @@ class CustomBottomNavBar extends StatelessWidget {
     final bool isActive = index == activeIndex;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),

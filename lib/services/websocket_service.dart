@@ -1,9 +1,10 @@
+import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/foundation.dart';
 
 /// WebSocket Service for real-time order tracking
 class WebSocketService extends ChangeNotifier {
-  static const String wsBaseUrl = 'ws://localhost:4000/api';
+  static const String wsBaseUrl = 'ws://10.0.2.2:4000/api';
 
   WebSocketChannel? _channel;
   String? _currentOrderId;
@@ -13,17 +14,14 @@ class WebSocketService extends ChangeNotifier {
   String? get currentOrderId => _currentOrderId;
   Map<String, dynamic>? get lastStatusUpdate => _lastStatusUpdate;
 
-  /// Connect to order WebSocket
+  /// Parsed status from the last message
+  String? get currentStatus => _lastStatusUpdate?['status'] as String?;
+
+  /// Connect to order WebSocket for real-time tracking
   Future<void> connectToOrder(String orderId, String authToken) async {
     try {
-      if (isConnected && _currentOrderId == orderId) {
-        return; // Already connected to same order
-      }
-
-      // Disconnect if connected to different order
-      if (isConnected) {
-        await disconnect();
-      }
+      if (isConnected && _currentOrderId == orderId) return;
+      if (isConnected) await disconnect();
 
       final wsUrl = Uri.parse(
         '$wsBaseUrl/orders/$orderId/stream?token=$authToken',
@@ -31,77 +29,52 @@ class WebSocketService extends ChangeNotifier {
       _channel = WebSocketChannel.connect(wsUrl);
       _currentOrderId = orderId;
 
-      // Listen for messages
       _channel?.stream.listen(_onMessage, onError: _onError, onDone: _onDone);
 
-      if (kDebugMode) {
-        print('WebSocket connected to order: $orderId');
-      }
+      if (kDebugMode) print('WS connected: $orderId');
       notifyListeners();
     } catch (e) {
-      if (kDebugMode) {
-        print('WebSocket connection error: $e');
-      }
+      if (kDebugMode) print('WS connect error: $e');
       rethrow;
     }
   }
 
-  /// Handle incoming messages
+  /// Handle incoming messages — server sends { type, orderId, status, statusUpdatedAt }
   void _onMessage(dynamic message) {
     try {
-      final data = message as String;
-      if (kDebugMode) {
-        print('WebSocket message: $data');
-      }
-
-      _lastStatusUpdate = {'timestamp': DateTime.now(), 'message': data};
-
+      final parsed = jsonDecode(message as String) as Map<String, dynamic>;
+      _lastStatusUpdate = parsed;
+      if (kDebugMode) print('WS message: $parsed');
       notifyListeners();
     } catch (e) {
-      if (kDebugMode) {
-        print('Error parsing WebSocket message: $e');
-      }
+      if (kDebugMode) print('WS parse error: $e');
     }
   }
 
-  /// Handle errors
   void _onError(error) {
-    if (kDebugMode) {
-      print('WebSocket error: $error');
-    }
+    if (kDebugMode) print('WS error: $error');
     notifyListeners();
   }
 
-  /// Handle connection close
   void _onDone() {
-    if (kDebugMode) {
-      print('WebSocket connection closed');
-    }
+    if (kDebugMode) print('WS closed');
     _channel = null;
     _currentOrderId = null;
     notifyListeners();
   }
 
-  /// Send message to WebSocket
   void sendMessage(Map<String, dynamic> data) {
-    if (!isConnected) {
-      throw Exception('WebSocket not connected');
-    }
-    _channel?.sink.add(data);
+    if (!isConnected) throw Exception('WebSocket not connected');
+    _channel?.sink.add(jsonEncode(data));
   }
 
-  /// Disconnect WebSocket
   Future<void> disconnect() async {
     try {
       await _channel?.sink.close();
-      _channel = null;
-      _currentOrderId = null;
-      notifyListeners();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error disconnecting WebSocket: $e');
-      }
-    }
+    } catch (_) {}
+    _channel = null;
+    _currentOrderId = null;
+    notifyListeners();
   }
 
   @override

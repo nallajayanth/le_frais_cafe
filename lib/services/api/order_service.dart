@@ -263,6 +263,30 @@ class Order {
   bool get isReady => status == 'READY';
   bool get isCompleted => status == 'COMPLETED';
   bool get isCancelled => status == 'CANCELLED';
+
+  Order copyWith({String? status, int? estimatedTime}) {
+    return Order(
+      id: id,
+      customerId: customerId,
+      orderType: orderType,
+      items: items,
+      subtotal: subtotal,
+      gst: gst,
+      serviceCharge: serviceCharge,
+      deliveryCharge: deliveryCharge,
+      discount: discount,
+      total: total,
+      status: status ?? this.status,
+      paymentStatus: paymentStatus,
+      paymentMethod: paymentMethod,
+      tableNumber: tableNumber,
+      deliveryAddressId: deliveryAddressId,
+      specialInstructions: specialInstructions,
+      estimatedTime: estimatedTime ?? this.estimatedTime,
+      createdAt: createdAt,
+      completedAt: completedAt,
+    );
+  }
 }
 
 /// Order Exception

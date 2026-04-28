@@ -29,29 +29,29 @@ class _Suggestion {
 
 const List<_Suggestion> _suggestions = [
   _Suggestion(
-    name: 'Macaron Vanille',
-    price: 2.80,
+    name: 'Garlic Bread',
+    price: 89,
     imageUrl:
-        'https://images.unsplash.com/photo-1569864358642-9d1684040f43?q=80&w=400&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?q=80&w=400&auto=format&fit=crop',
   ),
   _Suggestion(
-    name: 'Pain au Choc',
-    price: 4.80,
+    name: 'Masala Fries',
+    price: 99,
     imageUrl:
-        'https://images.unsplash.com/photo-1530610476181-d83430b64dcd?q=80&w=400&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?q=80&w=400&auto=format&fit=crop',
     isNew: true,
   ),
   _Suggestion(
-    name: 'Éclair Noisette',
-    price: 5.50,
+    name: 'Cold Coffee',
+    price: 149,
     imageUrl:
-        'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?q=80&w=400&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?q=80&w=400&auto=format&fit=crop',
   ),
   _Suggestion(
-    name: 'Lemon Tart',
-    price: 6.20,
+    name: 'Brownie Slice',
+    price: 129,
     imageUrl:
-        'https://images.unsplash.com/photo-1519915028121-7d3463d20b13?q=80&w=400&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?q=80&w=400&auto=format&fit=crop',
   ),
 ];
 
@@ -91,8 +91,8 @@ class _CartScreenState extends State<CartScreen> {
   // ── Computed subtotal ─────────────────────────────────────────────────────
   double _subtotal(CartProvider cart) => cart.subtotal;
   double _gst(CartProvider cart) => cart.subtotal * 0.05;
-  static const double _serviceCharge = 1.00;
-  static const double _loyaltyDiscount = 2.25;
+  static const double _serviceCharge = 20.0;
+  static const double _loyaltyDiscount = 45.0;
   double _total(CartProvider cart) =>
       cart.subtotal +
       _gst(cart) +
@@ -105,19 +105,19 @@ class _CartScreenState extends State<CartScreen> {
       case OrderMode.dineIn:
         return (
           icon: Icons.table_restaurant_rounded,
-          label: 'Dine-In — Table 7',
+          label: 'Dine-In',
           bg: _darkGreen,
         );
       case OrderMode.pickup:
         return (
           icon: Icons.shopping_bag_outlined,
-          label: 'Pickup — Ready in 10 min',
+          label: 'Pickup — Collect when ready',
           bg: const Color(0xFF2B4C35),
         );
       case OrderMode.delivery:
         return (
           icon: Icons.delivery_dining_rounded,
-          label: 'Delivery — 30–40 min',
+          label: 'Delivery — To your doorstep',
           bg: const Color(0xFF3B3220),
         );
     }
@@ -250,7 +250,7 @@ class _CartScreenState extends State<CartScreen> {
                     const SizedBox(height: 4),
                   ],
                   Text(
-                    '₹${entry.price.toStringAsFixed(2)}',
+                    '₹${entry.price.toStringAsFixed(0)}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
@@ -402,7 +402,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            '₹${s.price.toStringAsFixed(2)}',
+            '₹${s.price.toStringAsFixed(0)}',
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -457,7 +457,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           Text(
-            '₹${amount.toStringAsFixed(2)}',
+            '₹${amount.toStringAsFixed(0)}',
             style: TextStyle(
               fontSize: 13,
               fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
@@ -485,7 +485,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           Text(
-            isDiscount ? '-₹${amount.abs().toStringAsFixed(2)}' : '₹${amount.toStringAsFixed(2)}',
+            isDiscount ? '-₹${amount.abs().toStringAsFixed(0)}' : '₹${amount.toStringAsFixed(0)}',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -912,7 +912,7 @@ class _CartScreenState extends State<CartScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Save ₹${_loyaltyDiscount.toStringAsFixed(2)} on this order',
+                                  'Save ₹${_loyaltyDiscount.toStringAsFixed(0)} on this order',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF9A9690),
@@ -995,7 +995,7 @@ class _CartScreenState extends State<CartScreen> {
                                   ),
                                 ),
                                 Text(
-                                  '₹${_total(cart).toStringAsFixed(2)}',
+                                  '₹${_total(cart).toStringAsFixed(0)}',
                                   style: const TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w900,

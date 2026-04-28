@@ -1,4 +1,7 @@
 import 'api_client.dart';
+import '../../models/menu_item.dart';
+
+export '../../models/menu_item.dart' show MenuItem, CustomizationGroup, CustomizationOption;
 
 /// Menu Service - Fetch menu items, categories, search
 class MenuService {
@@ -23,12 +26,13 @@ class MenuService {
   }
 
   /// Fetch all menu items
-  Future<List<MenuItem>> getMenuItems({String? categoryId}) async {
+  Future<List<MenuItem>> getMenuItems({String? categoryId, bool? isVeg}) async {
     try {
       String endpoint = '/menu';
-      if (categoryId != null) {
-        endpoint += '?categoryId=$categoryId';
-      }
+      final params = <String>[];
+      if (categoryId != null) params.add('categoryId=$categoryId');
+      if (isVeg != null) params.add('isVeg=$isVeg');
+      if (params.isNotEmpty) endpoint += '?${params.join('&')}';
 
       final response = await apiClient.get(endpoint, requiresAuth: false);
       final items = (response['data'] as List)
@@ -43,8 +47,9 @@ class MenuService {
   /// Search menu items
   Future<List<MenuItem>> searchMenuItems(String query) async {
     try {
+      final encoded = Uri.encodeQueryComponent(query);
       final response = await apiClient.get(
-        '/menu/search?query=$query',
+        '/menu/search?query=$encoded',
         requiresAuth: false,
       );
       final items = (response['data'] as List)
@@ -76,12 +81,14 @@ class MenuCategory {
   final String name;
   final String? description;
   final String? imageUrl;
+  final int? sortOrder;
 
   MenuCategory({
     required this.id,
     required this.name,
     this.description,
     this.imageUrl,
+    this.sortOrder,
   });
 
   factory MenuCategory.fromJson(Map<String, dynamic> json) {
@@ -90,45 +97,7 @@ class MenuCategory {
       name: json['name'] ?? '',
       description: json['description'],
       imageUrl: json['imageUrl'],
-    );
-  }
-}
-
-/// Menu Item Model
-class MenuItem {
-  final String id;
-  final String name;
-  final String description;
-  final double price;
-  final String category;
-  final String imageUrl;
-  final List<String> dietary;
-  final bool isAvailable;
-  final int preparationTime;
-
-  MenuItem({
-    required this.id,
-    required this.name,
-    required this.description,
-    required this.price,
-    required this.category,
-    required this.imageUrl,
-    required this.dietary,
-    required this.isAvailable,
-    required this.preparationTime,
-  });
-
-  factory MenuItem.fromJson(Map<String, dynamic> json) {
-    return MenuItem(
-      id: json['_id'] ?? json['id'] ?? '',
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      category: json['category'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
-      dietary: List<String>.from(json['dietary'] ?? []),
-      isAvailable: json['isAvailable'] ?? true,
-      preparationTime: json['preparationTime'] ?? 15,
+      sortOrder: json['sortOrder'],
     );
   }
 }

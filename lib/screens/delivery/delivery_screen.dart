@@ -3,10 +3,10 @@ import '../shared/item_detail_screen.dart';
 import '../cart/cart_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/menu_provider.dart';
 import '../../models/cart_entry.dart';
 import '../../models/menu_item.dart';
 import '../../data/menu_data.dart';
-import '../profile/profile_screen.dart';
 import '../shared/custom_bottom_nav_bar.dart';
 
 class DeliveryScreen extends StatefulWidget {
@@ -33,6 +33,11 @@ class _DeliveryScreenState extends State<DeliveryScreen>
     _fadeController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _fadeController.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final menu = context.read<MenuProvider>();
+      if (menu.menuItems.isEmpty) menu.loadMenuItems();
+    });
   }
 
   @override
@@ -44,8 +49,10 @@ class _DeliveryScreenState extends State<DeliveryScreen>
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
-    final featuredItem = MenuData.getAllItems().first;
-    final dailySpecialities = MenuData.getAllItems().skip(1).take(4).toList();
+    final menu = context.watch<MenuProvider>();
+    final allItems = menu.menuItems.isNotEmpty ? menu.menuItems : MenuData.getAllItems();
+    final featuredItem = allItems.first;
+    final dailySpecialities = allItems.skip(1).take(4).toList();
 
     return Scaffold(
       backgroundColor: _bgCream,
@@ -331,6 +338,7 @@ class _DeliveryScreenState extends State<DeliveryScreen>
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => ItemDetailScreen(
+                            menuItemId: item.id,
                             name: item.name,
                             description: item.description,
                             price: item.price,
@@ -417,6 +425,7 @@ class _DeliveryScreenState extends State<DeliveryScreen>
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ItemDetailScreen(
+            menuItemId: item.id,
             name: item.name,
             description: item.description,
             price: item.price,

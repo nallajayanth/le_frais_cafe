@@ -1,63 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/review_provider.dart';
+import '../../services/api/review_service.dart';
 import '../cart/cart_screen.dart';
 import '../../models/cart_entry.dart';
 import '../../models/menu_item.dart';
 
-// ── Review model ──────────────────────────────────────────────────────────────
-
-class _Review {
-  final String initials;
-  final Color avatarColor;
-  final String name;
-  final String timeAgo;
-  final double rating;
-  final String text;
-
-  const _Review({
-    required this.initials,
-    required this.avatarColor,
-    required this.name,
-    required this.timeAgo,
-    required this.rating,
-    required this.text,
-  });
-}
-
-const List<_Review> _reviews = [
-  _Review(
-    initials: 'AM',
-    avatarColor: Color(0xFF6B8F71),
-    name: 'Ananya M.',
-    timeAgo: 'YESTERDAY',
-    rating: 5,
-    text:
-        '"The truffle aroma is divine. Bread was perfectly toasted. Highly recommend!"',
-  ),
-  _Review(
-    initials: 'RK',
-    avatarColor: Color(0xFF5B7FA6),
-    name: 'Rohan K.',
-    timeAgo: '3 DAYS AGO',
-    rating: 4,
-    text:
-        '"Good flavour but could use a bit more salt. Truffle oil is top tier."',
-  ),
-  _Review(
-    initials: 'SL',
-    avatarColor: Color(0xFFB07D62),
-    name: 'Sarah L.',
-    timeAgo: '1 WEEK AGO',
-    rating: 5,
-    text:
-        '"Absolutely delicious! Worth every penny. The wild mushrooms were so fresh."',
-  ),
-];
-
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 class ItemDetailScreen extends StatefulWidget {
+  final String? menuItemId;
   final String name;
   final String description;
   final double price;
@@ -71,6 +24,7 @@ class ItemDetailScreen extends StatefulWidget {
 
   const ItemDetailScreen({
     super.key,
+    this.menuItemId,
     required this.name,
     required this.description,
     required this.price,
@@ -109,6 +63,13 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           _selectedOptions[group.title] = {};
         }
       }
+    }
+    if (widget.menuItemId != null && widget.menuItemId!.isNotEmpty) {
+      Future.microtask(() {
+        if (mounted) {
+          context.read<ReviewProvider>().loadItemReviews(widget.menuItemId!);
+        }
+      });
     }
   }
 
@@ -158,8 +119,50 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     );
   }
 
+  // ── Review helpers ────────────────────────────────────────────────────────
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
+  Color _avatarColor(String name) {
+    const palette = [
+      Color(0xFF6B8F71),
+      Color(0xFF5B7FA6),
+      Color(0xFFB07D62),
+      Color(0xFF7A6B9A),
+      Color(0xFF4A8A8C),
+      Color(0xFF9A6B4B),
+    ];
+    return palette[name.codeUnitAt(0) % palette.length];
+  }
+
+  String _timeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inDays == 0) return 'TODAY';
+    if (diff.inDays == 1) return 'YESTERDAY';
+    if (diff.inDays < 7) return '${diff.inDays} DAYS AGO';
+    if (diff.inDays < 14) return '1 WEEK AGO';
+    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()} WEEKS AGO';
+    if (diff.inDays < 60) return '1 MONTH AGO';
+    return '${(diff.inDays / 30).floor()} MONTHS AGO';
+  }
+
   // ── Review card ───────────────────────────────────────────────────────────
-  Widget _buildReviewCard(_Review review) {
+  Widget _buildReviewCard(ItemReview review) {
+    final initials = _initials(review.customerName);
+    final avatarColor = _avatarColor(review.customerName);
+    final timeAgo = _timeAgo(review.createdAt);
+    final text = review.comment?.isNotEmpty == true
+        ? '"${review.comment}"'
+        : review.title?.isNotEmpty == true
+            ? '"${review.title}"'
+            : null;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -167,9 +170,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: review.avatarColor,
+            backgroundColor: avatarColor,
             child: Text(
-              review.initials,
+              initials,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -186,19 +189,19 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      review.name,
+                      review.customerName,
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF1C1A17),
                       ),
                     ),
-                    _buildStars(review.rating, 13),
+                    _buildStars(review.rating.toDouble(), 13),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  review.timeAgo,
+                  timeAgo,
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -206,16 +209,18 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  review.text,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF4A4845),
-                    height: 1.5,
-                    fontStyle: FontStyle.italic,
+                if (text != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF4A4845),
+                      height: 1.5,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -616,33 +621,93 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     _sectionDivider(),
 
                     // ── Customer Reviews ──────────────────────────────────────
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Customer Reviews',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'Georgia',
-                            color: Color(0xFF1C1A17),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {},
-                          child: const Text(
-                            'View All',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: _darkGreen,
+                    Consumer<ReviewProvider>(
+                      builder: (context, reviewProvider, _) {
+                        final hasId = widget.menuItemId != null &&
+                            widget.menuItemId!.isNotEmpty;
+                        final reviews = hasId
+                            ? reviewProvider.itemReviewsFor(widget.menuItemId!)
+                            : <ItemReview>[];
+                        final loading = hasId &&
+                            reviewProvider
+                                .isLoadingItemReviews(widget.menuItemId!);
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  reviews.isEmpty && !loading
+                                      ? 'Customer Reviews'
+                                      : 'Customer Reviews (${reviews.length})',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'Georgia',
+                                    color: Color(0xFF1C1A17),
+                                  ),
+                                ),
+                                if (reviews.length > 3)
+                                  const Text(
+                                    'View All',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _darkGreen,
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
-                        ),
-                      ],
+                            const SizedBox(height: 16),
+                            if (loading)
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 20),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF1E5C3A),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else if (reviews.isEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 24,
+                                  horizontal: 16,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F0E8),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.rate_review_outlined,
+                                      color: Color(0xFF9A9690),
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'No reviews yet — be the first!',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF6A6865),
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              ...reviews.take(5).map(_buildReviewCard),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 16),
-                    ..._reviews.map(_buildReviewCard),
                   ],
                 ),
               ),

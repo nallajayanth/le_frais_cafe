@@ -3,6 +3,7 @@ import '../shared/item_detail_screen.dart';
 import '../cart/cart_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/menu_provider.dart';
 import '../../models/cart_entry.dart';
 import '../../models/menu_item.dart';
 import '../../data/menu_data.dart';
@@ -17,7 +18,11 @@ class DineInScreen extends StatefulWidget {
 
 class _DineInScreenState extends State<DineInScreen>
     with SingleTickerProviderStateMixin {
-  String _selectedCategory = 'All';
+  // null = "All" selected
+  String? _selectedCategoryId;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  bool _searchFocused = false;
   late AnimationController _headerAnimController;
   late Animation<double> _headerFade;
 
@@ -27,7 +32,7 @@ class _DineInScreenState extends State<DineInScreen>
   static const Color _gold = Color(0xFFC88B1A);
   static const Color _bgCream = Color(0xFFF4F2EC);
 
-  final List<String> _categories = [
+  static const List<String> _staticCategories = [
     'All', 'Appetizers', 'Chinese Starters', 'Momos', 'Burgers', 'Noodles', 'Rice',
   ];
 
@@ -40,19 +45,54 @@ class _DineInScreenState extends State<DineInScreen>
     );
     _headerFade = CurvedAnimation(parent: _headerAnimController, curve: Curves.easeOut);
     _headerAnimController.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final menu = context.read<MenuProvider>();
+      if (menu.menuItems.isEmpty) menu.loadMenuItems();
+      if (menu.categories.isEmpty) menu.loadCategories();
+    });
   }
 
   @override
   void dispose() {
     _headerAnimController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  List<MenuItem> get _filteredItems {
-    if (_selectedCategory == 'All') return MenuData.getAllItems();
-    return MenuData.getAllItems()
-        .where((item) => item.category == _selectedCategory)
-        .toList();
+  List<MenuItem> _getFilteredItems(MenuProvider menu) {
+    // Use backend items when loaded, fallback to static data
+    final bool useBackend = menu.menuItems.isNotEmpty;
+    var items = useBackend ? menu.menuItems : MenuData.getAllItems();
+
+    // Category filter
+    if (_selectedCategoryId != null) {
+      items = items.where((item) => item.category == _selectedCategoryId).toList();
+    }
+
+    // Search filter
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      items = items.where((item) =>
+        item.name.toLowerCase().contains(q) ||
+        item.description.toLowerCase().contains(q)
+      ).toList();
+    }
+
+    return items;
+  }
+
+  // Returns list of (filterId, displayName) tuples
+  // filterId null = "All"
+  List<(String?, String)> _getCategoryOptions(MenuProvider menu) {
+    if (menu.categories.isNotEmpty) {
+      return [
+        (null, 'All'),
+        ...menu.categories.map((c) => (c.id, c.name)),
+      ];
+    }
+    // Fallback to static category names
+    return _staticCategories.map((name) => (name == 'All' ? null : name, name)).toList();
   }
 
   Widget _buildHeader(CartProvider cart) {
@@ -110,33 +150,29 @@ class _DineInScreenState extends State<DineInScreen>
                     alignment: Alignment.centerLeft,
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: _gold.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: _gold.withValues(alpha: 0.4), width: 1),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _gold.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _gold.withValues(alpha: 0.4), width: 1),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.table_restaurant_rounded, color: Color(0xFFC88B1A), size: 11),
+                        SizedBox(width: 4),
+                        Text(
+                          'DINE-IN',
+                          style: TextStyle(
+                            color: Color(0xFFC88B1A),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.0,
+                          ),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.table_restaurant_rounded, color: Color(0xFFC88B1A), size: 11),
-                            SizedBox(width: 4),
-                            Text(
-                              'TABLE 7  •  DINE-IN',
-                              style: TextStyle(
-                                color: Color(0xFFC88B1A),
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -186,47 +222,80 @@ class _DineInScreenState extends State<DineInScreen>
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      height: 50,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEAE8E2), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
+    return Focus(
+      onFocusChange: (focused) => setState(() => _searchFocused = focused),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _searchFocused ? _accentGreen : const Color(0xFFEAE8E2),
+            width: _searchFocused ? 1.5 : 1.5,
           ),
-        ],
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.search_rounded, size: 20, color: Color(0xFFB0AEAA)),
-          SizedBox(width: 10),
-          Text(
-            'Search in the menu...',
-            style: TextStyle(color: Color(0xFFB0AEAA), fontSize: 14, fontWeight: FontWeight.w500),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: (val) => setState(() {
+            _searchQuery = val.trim();
+            if (val.isNotEmpty) _selectedCategoryId = null;
+          }),
+          decoration: InputDecoration(
+            hintText: 'Search in the menu...',
+            hintStyle: const TextStyle(color: Color(0xFFB0AEAA), fontSize: 14, fontWeight: FontWeight.w500),
+            prefixIcon: const Padding(
+              padding: EdgeInsets.only(left: 14, right: 8),
+              child: Icon(Icons.search_rounded, size: 20, color: Color(0xFFB0AEAA)),
+            ),
+            prefixIconConstraints: const BoxConstraints(minWidth: 0),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.only(right: 14),
+                      child: Icon(Icons.cancel_rounded, size: 18, color: Color(0xFFB0AEAA)),
+                    ),
+                  )
+                : null,
+            suffixIconConstraints: const BoxConstraints(minWidth: 0),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
-        ],
+          style: const TextStyle(fontSize: 14, color: Color(0xFF1C1A17), fontWeight: FontWeight.w500),
+        ),
       ),
     );
   }
 
-  Widget _buildCategoryBar() {
+  Widget _buildCategoryBar(List<(String?, String)> options) {
     return SizedBox(
       height: 44,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _categories.length,
+        itemCount: options.length,
         itemBuilder: (ctx, i) {
-          final cat = _categories[i];
-          final active = _selectedCategory == cat;
+          final (filterId, displayName) = options[i];
+          final active = filterId == _selectedCategoryId;
           return GestureDetector(
-            onTap: () => setState(() => _selectedCategory = cat),
+            onTap: () => setState(() {
+              _selectedCategoryId = filterId;
+              if (filterId != null) {
+                _searchController.clear();
+                _searchQuery = '';
+              }
+            }),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOutCubic,
@@ -258,7 +327,7 @@ class _DineInScreenState extends State<DineInScreen>
               ),
               alignment: Alignment.center,
               child: Text(
-                cat,
+                displayName,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -280,6 +349,7 @@ class _DineInScreenState extends State<DineInScreen>
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ItemDetailScreen(
+            menuItemId: item.id,
             name: item.name,
             description: item.description,
             price: item.price,
@@ -307,7 +377,6 @@ class _DineInScreenState extends State<DineInScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image area
             Expanded(
               flex: 5,
               child: Stack(
@@ -327,7 +396,6 @@ class _DineInScreenState extends State<DineInScreen>
                       ),
                     ),
                   ),
-                  // Gradient overlay at bottom of image
                   Positioned(
                     bottom: 0,
                     left: 0,
@@ -343,13 +411,11 @@ class _DineInScreenState extends State<DineInScreen>
                       ),
                     ),
                   ),
-                  // Veg indicator
                   Positioned(
                     top: 10,
                     left: 10,
                     child: _vegIndicator(item.isVeg),
                   ),
-                  // Tag badge
                   if (item.tag != null)
                     Positioned(
                       bottom: 8,
@@ -375,7 +441,6 @@ class _DineInScreenState extends State<DineInScreen>
               ),
             ),
 
-            // Content
             Expanded(
               flex: 3,
               child: Padding(
@@ -519,10 +584,57 @@ class _DineInScreenState extends State<DineInScreen>
     );
   }
 
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.restaurant_rounded,
+              size: 36,
+              color: const Color(0xFFD0CEC9),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _searchQuery.isNotEmpty ? 'No results for "$_searchQuery"' : 'Nothing here yet',
+            style: const TextStyle(
+              color: Color(0xFF6A6865),
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Georgia',
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _searchQuery.isNotEmpty ? 'Try a different search term' : 'No items in this category',
+            style: const TextStyle(color: Color(0xFF9A9690), fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
-    final items = _filteredItems;
+    final menu = context.watch<MenuProvider>();
+    final items = _getFilteredItems(menu);
+    final categoryOptions = _getCategoryOptions(menu);
 
     return Scaffold(
       backgroundColor: _bgCream,
@@ -533,39 +645,34 @@ class _DineInScreenState extends State<DineInScreen>
             const SizedBox(height: 8),
             _buildSearchBar(),
             const SizedBox(height: 12),
-            _buildCategoryBar(),
+            _buildCategoryBar(categoryOptions),
             const SizedBox(height: 12),
             Expanded(
-              child: items.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.restaurant_rounded, size: 64, color: Colors.black.withValues(alpha: 0.1)),
-                          const SizedBox(height: 16),
-                          const Text('No items in this category.',
-                              style: TextStyle(color: Color(0xFF9A9690), fontSize: 15)),
-                        ],
+              child: menu.isLoading && menu.menuItems.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF1E5C3A),
+                        strokeWidth: 2.5,
                       ),
                     )
-                  : GridView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: 0.60,
-                      ),
-                      itemCount: items.length,
-                      itemBuilder: (ctx, i) => _buildGridCard(items[i], cart),
-                    ),
+                  : items.isEmpty
+                      ? _buildEmptyState()
+                      : GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                            childAspectRatio: 0.60,
+                          ),
+                          itemCount: items.length,
+                          itemBuilder: (ctx, i) => _buildGridCard(items[i], cart),
+                        ),
             ),
           ],
         ),
       ),
-      bottomSheet: cart.totalItems > 0
-          ? _buildCartBanner(cart)
-          : null,
+      bottomSheet: cart.totalItems > 0 ? _buildCartBanner(cart) : null,
       bottomNavigationBar: const CustomBottomNavBar(activeIndex: 0),
     );
   }
