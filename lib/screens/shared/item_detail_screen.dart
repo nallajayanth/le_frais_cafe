@@ -89,6 +89,7 @@ class ItemDetailScreen extends StatefulWidget {
 
 class _ItemDetailScreenState extends State<ItemDetailScreen> {
   int _qty = 0;
+  bool _initialized = false;
   bool _descExpanded = false;
   final TextEditingController _instructionsController = TextEditingController();
   final Map<String, Set<CustomizationOption>> _selectedOptions = {};
@@ -108,6 +109,18 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           _selectedOptions[group.title] = {};
         }
       }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialized) {
+      _initialized = true;
+      // Read directly (no setState) — didChangeDependencies runs before the
+      // first build, so assigning _qty here is reflected on the very first paint.
+      final cart = context.read<CartProvider>();
+      _qty = cart.getItemQuantity(widget.name);
     }
   }
 
@@ -690,8 +703,15 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                       onTap: () {
                         final cart = context.read<CartProvider>();
                         final qtyToAdd = _qty == 0 ? 1 : _qty;
-                        
-                        cart.addItem(CartEntry(
+
+                        // Capture BEFORE pop — context is deactivated after pop()
+                        // so we must grab these references while still mounted.
+                        final messenger = ScaffoldMessenger.of(context);
+                        final nav = Navigator.of(context);
+
+                        // SET (not add) the cart quantity so tapping "Add to Cart"
+                        // reflects exactly the stepper value — no double-counting.
+                        cart.setItem(CartEntry(
                           name: widget.name,
                           price: _currentPrice,
                           imageUrl: widget.imageUrl,
@@ -700,19 +720,45 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                               .expand((opts) => opts)
                               .map((opt) => opt.name)
                               .toList(),
-                          instructions: _instructionsController.text.trim().isNotEmpty 
-                              ? _instructionsController.text.trim() 
+                          instructions: _instructionsController.text.trim().isNotEmpty
+                              ? _instructionsController.text.trim()
                               : null,
                         ));
 
-                        // Navigate to CartScreen
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const CartScreen(),
-                            settings:
-                                const RouteSettings(name: '/cart'),
-                          ),
-                        );
+                        // Pop back to MenuScreen.
+                        // MenuScreen uses context.watch<CartProvider>() so it
+                        // rebuilds immediately and shows the correct qty stepper.
+                        nav.pop();
+
+                        // Now show snackbar on the parent (MenuScreen) Scaffold.
+                        messenger
+                          ..clearSnackBars()
+                          ..showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '$qtyToAdd × ${widget.name} added to cart',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              backgroundColor: const Color(0xFF1E3D2A),
+                              duration: const Duration(seconds: 3),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              action: SnackBarAction(
+                                label: 'VIEW CART',
+                                textColor: const Color(0xFF8FCF8F),
+                                onPressed: () {
+                                  nav.push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const CartScreen(),
+                                      settings: const RouteSettings(name: '/cart'),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 16),

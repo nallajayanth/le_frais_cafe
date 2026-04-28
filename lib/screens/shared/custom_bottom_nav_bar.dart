@@ -18,107 +18,123 @@ class CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
-    const Color darkGreen = Color(0xFF1E3D2A);
-    const Color inactiveColor = Color(0xFFB0AEAA);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _navItem(
-              context,
-              index: 0,
-              activeIndex: activeIndex,
-              icon: Icons.home_outlined,
-              label: 'HOME',
-              onTap: () {
-                if (activeIndex == 0) return;
-                Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
-              },
-            ),
-            _navItem(
-              context,
-              index: 1,
-              activeIndex: activeIndex,
-              icon: Icons.restaurant_menu_rounded,
-              label: 'MENU',
-              onTap: () {
-                if (activeIndex == 1) return;
-                Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const MenuScreen(),
-                    settings: const RouteSettings(name: '/menu'),
-                  ),
-                );
-              },
-            ),
-            _navItem(
-              context,
-              index: 2,
-              activeIndex: activeIndex,
-              icon: Icons.receipt_long_outlined,
-              label: 'ORDERS',
-              onTap: () {
-                if (activeIndex == 2) return;
-                Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const OrderHistoryScreen(),
-                    settings: const RouteSettings(name: '/orders'),
-                  ),
-                );
-              },
-            ),
-            _navItem(
-              context,
-              index: 3,
-              activeIndex: activeIndex,
-              icon: Icons.shopping_cart_outlined,
-              label: 'CART',
-              showBadge: true,
-              badgeCount: cart.totalItems,
-              onTap: () {
-                if (activeIndex == 3) return;
-                Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const CartScreen(),
-                    settings: const RouteSettings(name: '/cart'),
-                  ),
-                );
-              },
-            ),
-            _navItem(
-              context,
-              index: 4,
-              activeIndex: activeIndex,
-              icon: Icons.person_outline_rounded,
-              label: 'PROFILE',
-              onTap: () {
-                if (activeIndex == 4) return;
-                Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ProfileScreen(),
-                    settings: const RouteSettings(name: '/profile'),
-                  ),
-                );
-              },
-            ),
-          ],
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F2A1A),
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F2A1A).withValues(alpha: 0.45),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+                spreadRadius: -4,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _navItem(
+                context,
+                index: 0,
+                activeIndex: activeIndex,
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: 'Home',
+                onTap: () {
+                  if (activeIndex == 0) return;
+                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                },
+              ),
+              _navItem(
+                context,
+                index: 1,
+                activeIndex: activeIndex,
+                icon: Icons.restaurant_menu_outlined,
+                activeIcon: Icons.restaurant_menu_rounded,
+                label: 'Menu',
+                onTap: () {
+                  if (activeIndex == 1) return;
+                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MenuScreen(),
+                      settings: const RouteSettings(name: '/menu'),
+                    ),
+                  );
+                },
+              ),
+              _navItem(
+                context,
+                index: 2,
+                activeIndex: activeIndex,
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long_rounded,
+                label: 'Orders',
+                onTap: () {
+                  if (activeIndex == 2) return;
+                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const OrderHistoryScreen(),
+                      settings: const RouteSettings(name: '/orders'),
+                    ),
+                  );
+                },
+              ),
+              _navItem(
+                context,
+                index: 3,
+                activeIndex: activeIndex,
+                icon: Icons.shopping_bag_outlined,
+                activeIcon: Icons.shopping_bag_rounded,
+                label: 'Cart',
+                showBadge: true,
+                badgeCount: cart.totalItems,
+                onTap: () {
+                  if (activeIndex == 3) return;
+                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CartScreen(),
+                      settings: const RouteSettings(name: '/cart'),
+                    ),
+                  );
+                },
+              ),
+              _navItem(
+                context,
+                index: 4,
+                activeIndex: activeIndex,
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profile',
+                onTap: () {
+                  if (activeIndex == 4) return;
+                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ProfileScreen(),
+                      settings: const RouteSettings(name: '/profile'),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -129,45 +145,55 @@ class CustomBottomNavBar extends StatelessWidget {
     required int index,
     required int activeIndex,
     required IconData icon,
+    required IconData activeIcon,
     required String label,
     required VoidCallback onTap,
     bool showBadge = false,
     int badgeCount = 0,
   }) {
     final bool isActive = index == activeIndex;
-    final Color color = isActive ? const Color(0xFF1E3D2A) : const Color(0xFFB0AEAA);
 
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 60,
-        child: Column(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: isActive
+            ? const EdgeInsets.symmetric(horizontal: 18, vertical: 10)
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF1E5C3A) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(icon, color: color, size: 24),
+                Icon(
+                  isActive ? activeIcon : icon,
+                  color: isActive ? Colors.white : const Color(0xFF6B8F71),
+                  size: 22,
+                ),
                 if (showBadge && badgeCount > 0)
                   Positioned(
-                    right: -6,
-                    top: -6,
+                    right: -7,
+                    top: -7,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFB94040),
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFC88B1A),
                         shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF0F2A1A), width: 1.5),
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                       child: Text(
                         '$badgeCount',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: FontWeight.w800,
                         ),
                         textAlign: TextAlign.center,
@@ -176,16 +202,18 @@ class CustomBottomNavBar extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
-                color: color,
-                letterSpacing: 0.2,
+            if (isActive) ...[
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../auth/login_screen.dart';
 import '../cart/cart_screen.dart';
-import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
 import '../address/address_picker_sheet.dart';
-
 import '../shared/custom_bottom_nav_bar.dart';
 
 class _ProfileTileData {
   final IconData icon;
+  final Color iconBg;
+  final Color iconColor;
   final String title;
   final String subtitle;
   final bool hasNotification;
@@ -16,6 +16,8 @@ class _ProfileTileData {
 
   _ProfileTileData({
     required this.icon,
+    required this.iconBg,
+    required this.iconColor,
     required this.title,
     required this.subtitle,
     this.hasNotification = false,
@@ -31,6 +33,8 @@ class ProfileScreen extends StatelessWidget {
     final List<_ProfileTileData> tiles = [
       _ProfileTileData(
         icon: Icons.history_rounded,
+        iconBg: const Color(0xFFE9F5EC),
+        iconColor: const Color(0xFF1E5C3A),
         title: 'Order History',
         subtitle: 'View your past artisanal treats',
         onTap: () {
@@ -41,6 +45,8 @@ class ProfileScreen extends StatelessWidget {
       ),
       _ProfileTileData(
         icon: Icons.location_on_outlined,
+        iconBg: const Color(0xFFEDF2FF),
+        iconColor: const Color(0xFF3B5BDB),
         title: 'Saved Addresses',
         subtitle: 'Manage delivery destinations',
         onTap: () {
@@ -50,372 +56,548 @@ class ProfileScreen extends StatelessWidget {
             backgroundColor: Colors.transparent,
             builder: (ctx) => AddressPickerSheet(
               selected: null,
-              onSelected: (_) {}, // Profile screen just manages addresses
+              onSelected: (_) {},
             ),
           );
         },
       ),
       _ProfileTileData(
         icon: Icons.notifications_none_rounded,
+        iconBg: const Color(0xFFFFF3E0),
+        iconColor: const Color(0xFFC88B1A),
         title: 'Notifications',
         subtitle: 'Manage alerts and news',
         hasNotification: true,
       ),
       _ProfileTileData(
         icon: Icons.account_balance_wallet_outlined,
+        iconBg: const Color(0xFFEEF4FF),
+        iconColor: const Color(0xFF5B6AF0),
         title: 'Payments',
         subtitle: 'Default methods and billing',
       ),
       _ProfileTileData(
         icon: Icons.help_outline_rounded,
+        iconBg: const Color(0xFFF6F0FF),
+        iconColor: const Color(0xFF8B5CF6),
         title: 'Help & Support',
         subtitle: 'FAQs and direct assistance',
       ),
       _ProfileTileData(
-        icon: Icons.history_rounded, // Reuses same icon in design
+        icon: Icons.card_giftcard_rounded,
+        iconBg: const Color(0xFFFFF0F6),
+        iconColor: const Color(0xFFE64980),
         title: 'Rewards',
-        subtitle: 'See Your rewards',
+        subtitle: 'See your exclusive rewards',
       ),
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFCFCF9),
+      backgroundColor: const Color(0xFFF4F2EC),
       bottomNavigationBar: const CustomBottomNavBar(activeIndex: 4),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ── APP BAR ───────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        color: Color(0xFF1B5135)),
-                  ),
-                  const Text(
-                    'Account',
-                    style: TextStyle(
-                      fontFamily: 'Georgia',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
-                      color: Color(0xFF1B5135),
-                    ),
-                  ),
-                  const Icon(Icons.settings_outlined,
-                      color: Color(0xFF1B5135)),
-                ],
+      body: Stack(
+        children: [
+          // Header gradient
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 300,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF0F2A1A), Color(0xFFF4F2EC)],
+                  stops: [0.0, 0.88],
+                ),
               ),
             ),
+          ),
 
-            // ── BODY SCROLL ───────────────────────────────────
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: Column(
-                  children: [
-                    // ── AVATAR SECTION ────────────────────────
-                    Stack(
-                      clipBehavior: Clip.none,
-                      alignment: Alignment.bottomCenter,
+          SafeArea(
+            child: Column(
+              children: [
+                // App Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded,
+                              size: 16, color: Colors.white),
+                        ),
+                      ),
+                      const Text(
+                        'My Account',
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.settings_outlined,
+                            color: Colors.white, size: 20),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Scrollable body
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
                       children: [
-                        Container(
-                          width: 106,
-                          height: 106,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            image: DecorationImage(
-                              image: NetworkImage(
-                                'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=400&auto=format&fit=crop',
+                        const SizedBox(height: 8),
+
+                        // Avatar section with gold ring
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Gold ring
+                            Container(
+                              width: 118,
+                              height: 118,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFC88B1A), Color(0xFFDAA520), Color(0xFF8B5A10)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFC88B1A).withValues(alpha: 0.4),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 6),
+                                    spreadRadius: -4,
+                                  ),
+                                ],
                               ),
-                              fit: BoxFit.cover,
+                            ),
+                            // Avatar
+                            Container(
+                              width: 106,
+                              height: 106,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                image: DecorationImage(
+                                  image: NetworkImage(
+                                    'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=400&auto=format&fit=crop',
+                                  ),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            // Edit button
+                            Positioned(
+                              bottom: 4,
+                              right: 4,
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFC88B1A),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.edit, color: Colors.white, size: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Member badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFCD3AA), Color(0xFFFFE8CC)],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFC88B1A).withValues(alpha: 0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.verified_rounded, size: 14, color: Color(0xFF8B5A10)),
+                              SizedBox(width: 5),
+                              Text(
+                                'GOLD MACARON MEMBER',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8,
+                                  color: Color(0xFF8B5A10),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        const Text(
+                          'James Thorne',
+                          style: TextStyle(
+                            fontFamily: 'Georgia',
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0F2A1A),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'james.thorne@artisan.mail',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF6F6E6B),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Loyalty card
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0F2A1A), Color(0xFF1E4D30), Color(0xFF1A3D26)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F2A1A).withValues(alpha: 0.4),
+                                blurRadius: 24,
+                                offset: const Offset(0, 8),
+                                spreadRadius: -4,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    'LOYALTY BALANCE',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.8,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFC88B1A).withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0xFFC88B1A).withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      '⭐  GOLD',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFFC88B1A),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  const Text(
+                                    '2,400',
+                                    style: TextStyle(
+                                      fontSize: 52,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      height: 1.0,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'pts',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontFamily: 'Georgia',
+                                      fontStyle: FontStyle.italic,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              Container(
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: 2400 / 3000,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFC88B1A), Color(0xFFDAA520)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: const [
+                                  Text(
+                                    'Next reward at 3,000 pts',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white54,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    '600 pts to go',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Color(0xFFC88B1A),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 20),
+                              Container(
+                                width: double.infinity,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFB8860B), Color(0xFFDAA520)],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFC88B1A).withValues(alpha: 0.35),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {},
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: const Center(
+                                      child: Text(
+                                        'Redeem Points',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Section header
+                        const Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'PREFERENCES & SECURITY',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.8,
+                              color: Color(0xFF9A9690),
                             ),
                           ),
                         ),
-                        // Badge Pill
-                        Positioned(
-                          bottom: -12,
+                        const SizedBox(height: 14),
+                        ...tiles.map((t) => _buildTile(t)),
+                        const SizedBox(height: 16),
+
+                        // Sign out
+                        GestureDetector(
+                          onTap: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => Dialog(
+                                backgroundColor: Colors.transparent,
+                                child: Container(
+                                  padding: const EdgeInsets.all(28),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(28),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.12),
+                                        blurRadius: 30,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 56,
+                                        height: 56,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFFEE2E2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.logout_rounded, color: Color(0xFFDC2626), size: 26),
+                                      ),
+                                      const SizedBox(height: 18),
+                                      const Text(
+                                        'Sign Out?',
+                                        style: TextStyle(
+                                          fontFamily: 'Georgia',
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 22,
+                                          color: Color(0xFF0F2A1A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'You will be signed out of Le Frais.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontSize: 14, color: Color(0xFF6A6865), height: 1.5),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () => Navigator.of(ctx).pop(false),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF0F0EC),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: const Center(
+                                                  child: Text('Cancel',
+                                                      style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF3A3835))),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: GestureDetector(
+                                              onTap: () => Navigator.of(ctx).pop(true),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFFFEDED),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: const Center(
+                                                  child: Text('Sign Out',
+                                                      style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                            if (confirm == true && context.mounted) {
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                (route) => false,
+                              );
+                            }
+                          },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFCD3AA),
-                              borderRadius: BorderRadius.circular(20),
+                              color: const Color(0xFFFFEDED),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: const Color(0xFFFECACA), width: 1.5),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.verified_rounded,
-                                    size: 14, color: Color(0xFF4A2511)),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  'GOLD\nMACARON',
-                                  textAlign: TextAlign.center,
+                                Icon(Icons.logout_rounded, size: 18, color: Color(0xFFDC2626)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Sign Out',
                                   style: TextStyle(
-                                    fontSize: 9,
-                                    height: 1.1,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.0,
-                                    color: Color(0xFF4A2511),
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFFDC2626),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ),
+                        const SizedBox(height: 40),
                       ],
                     ),
-                    const SizedBox(height: 32),
-
-                    // User Details
-                    const Text(
-                      'James Thorne',
-                      style: TextStyle(
-                        fontFamily: 'Georgia',
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1B5135),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'james.thorne@artisan.mail',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF6F6E6B),
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-
-                    // ── LOYALTY CARD ──────────────────────────
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 20,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'YOUR LOYALTY BALANCE',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.5,
-                              color: Color(0xFFA1A09B),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              const Text(
-                                '2',
-                                style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1B5135),
-                                  height: 1.0,
-                                ),
-                              ),
-                              const Text(
-                                ',400',
-                                style: TextStyle(
-                                  fontSize: 42,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1B5135),
-                                  height: 1.0,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'pts',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontFamily: 'Georgia',
-                                  fontStyle: FontStyle.italic,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF8B8A88),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF286044),
-                                elevation: 0,
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: const Text(
-                                'Redeem',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          const Divider(
-                              color: Color(0xFFF3F2EE), thickness: 1, height: 1),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
-                              Text(
-                                'Next reward at 3,000 pts',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF6F6E6B),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                '600 to go',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF8C6B46),
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          // Progress Bar
-                          Container(
-                            height: 6,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F2EE),
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                            child: FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: 2400 / 3000,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF8C6B46),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-
-                    // ── PREFERENCE & SECURITY ─────────────────
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'PREFERENCE & SECURITY',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.5,
-                          color: Color(0xFFA1A09B),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ...tiles.map((t) => _buildTile(t)),
-                    const SizedBox(height: 16),
-
-                    // ── SIGN OUT ──────────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              backgroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20)),
-                              title: const Text(
-                                'Sign Out?',
-                                style: TextStyle(
-                                  fontFamily: 'Georgia',
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF1B5135),
-                                ),
-                              ),
-                              content: const Text(
-                                  'You will be signed out of Le Frais.'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(ctx).pop(false),
-                                  child: const Text('Cancel',
-                                      style: TextStyle(
-                                          color: Color(0xFF1B5135),
-                                          fontWeight: FontWeight.w700)),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.of(ctx).pop(true),
-                                  child: const Text('Sign Out',
-                                      style: TextStyle(
-                                          color: Color(0xFFC74343),
-                                          fontWeight: FontWeight.w700)),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true && context.mounted) {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                  builder: (_) => const LoginScreen()),
-                              (route) => false,
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.logout_rounded, size: 20),
-                        label: const Text(
-                          'Sign Out',
-                          style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w700),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFC74343),
-                          side: const BorderSide(
-                              color: Color(0xFFF5DDDB), width: 1.5),
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -424,26 +606,31 @@ class ProfileScreen extends StatelessWidget {
     return GestureDetector(
       onTap: data.onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF6F6F1),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
-            // Icon
             Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: data.iconBg,
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(data.icon, color: const Color(0xFF1B5135), size: 20),
+              child: Icon(data.icon, color: data.iconColor, size: 22),
             ),
-            const SizedBox(width: 16),
-            // Text
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -468,19 +655,18 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-            // Badge / Chevron
             if (data.hasNotification)
               Container(
                 margin: const EdgeInsets.only(right: 8),
                 width: 8,
                 height: 8,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF8C6B46),
+                  color: Color(0xFFC88B1A),
                   shape: BoxShape.circle,
                 ),
               ),
-            const Icon(Icons.chevron_right_rounded,
-                color: Color(0xFFB3B1AC), size: 22),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: Color(0xFFD0CEC9), size: 14),
           ],
         ),
       ),

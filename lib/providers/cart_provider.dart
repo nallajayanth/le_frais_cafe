@@ -31,7 +31,7 @@ class CartProvider extends ChangeNotifier {
   }
 
   void addItem(CartEntry entry) {
-    final index = _items.indexWhere((e) => e.name == entry.name);
+    final index = _items.indexWhere((e) => e.isSameItem(entry));
     if (index >= 0) {
       _items[index].qty += entry.qty;
     } else {
@@ -39,6 +39,36 @@ class CartProvider extends ChangeNotifier {
     }
     _saveToPrefs();
     notifyListeners();
+  }
+
+  /// Sets (not increments) the quantity for an item that matches [entry] by
+  /// isSameItem equality. If a match exists its qty is replaced; if not the
+  /// entry is inserted. Qty ≤ 0 removes the existing entry.
+  /// Use this from ItemDetailScreen so tapping "Add to Cart" reflects the
+  /// exact stepper value rather than stacking on top of the old cart qty.
+  void setItem(CartEntry entry) {
+    final index = _items.indexWhere((e) => e.isSameItem(entry));
+    if (index >= 0) {
+      if (entry.qty <= 0) {
+        _items.removeAt(index);
+      } else {
+        _items[index].qty = entry.qty;
+      }
+    } else if (entry.qty > 0) {
+      _items.add(entry);
+    }
+    _saveToPrefs();
+    notifyListeners();
+  }
+
+  int getItemQuantity(String itemName) {
+    return _items
+        .where((e) => e.name == itemName)
+        .fold(0, (sum, item) => sum + item.qty);
+  }
+
+  int findFirstIndexByName(String itemName) {
+    return _items.indexWhere((e) => e.name == itemName);
   }
 
   void removeItemAt(int index) {

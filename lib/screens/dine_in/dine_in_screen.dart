@@ -6,10 +6,6 @@ import '../../providers/cart_provider.dart';
 import '../../models/cart_entry.dart';
 import '../../models/menu_item.dart';
 import '../../data/menu_data.dart';
-import '../menu/menu_screen.dart';
-import '../order/order_history_screen.dart';
-import '../profile/profile_screen.dart';
-
 import '../shared/custom_bottom_nav_bar.dart';
 
 class DineInScreen extends StatefulWidget {
@@ -19,102 +15,266 @@ class DineInScreen extends StatefulWidget {
   State<DineInScreen> createState() => _DineInScreenState();
 }
 
-class _DineInScreenState extends State<DineInScreen> {
+class _DineInScreenState extends State<DineInScreen>
+    with SingleTickerProviderStateMixin {
   String _selectedCategory = 'All';
-  
-  static const Color _darkGreen = Color(0xFF1E3D2A);
-  static const Color _accentGreen = Color(0xFF2D8653);
-  static const Color _bgCream = Color(0xFFFDFCF9);
-  static const Color _gold = Color(0xFFC77A1A);
+  late AnimationController _headerAnimController;
+  late Animation<double> _headerFade;
 
-  List<String> get _categories => [
-    'All',
-    'Appetizers',
-    'Chinese Starters',
-    'Momos',
-    'Burgers',
-    'Noodles',
-    'Rice',
+  static const Color _darkGreen = Color(0xFF0F2A1A);
+  static const Color _accentGreen = Color(0xFF1E5C3A);
+  static const Color _lightGreen = Color(0xFF2D8653);
+  static const Color _gold = Color(0xFFC88B1A);
+  static const Color _bgCream = Color(0xFFF4F2EC);
+
+  final List<String> _categories = [
+    'All', 'Appetizers', 'Chinese Starters', 'Momos', 'Burgers', 'Noodles', 'Rice',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _headerAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _headerFade = CurvedAnimation(parent: _headerAnimController, curve: Curves.easeOut);
+    _headerAnimController.forward();
+  }
+
+  @override
+  void dispose() {
+    _headerAnimController.dispose();
+    super.dispose();
+  }
 
   List<MenuItem> get _filteredItems {
     if (_selectedCategory == 'All') return MenuData.getAllItems();
-    return MenuData.getAllItems().where((item) => item.category == _selectedCategory).toList();
+    return MenuData.getAllItems()
+        .where((item) => item.category == _selectedCategory)
+        .toList();
   }
 
-  // ── Header Component ───────────────────────────────────────────────────
   Widget _buildHeader(CartProvider cart) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6B8B77),
-              borderRadius: BorderRadius.circular(16),
+    return FadeTransition(
+      opacity: _headerFade,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0F2A1A), Color(0xFF1E4D30)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0F2A1A).withValues(alpha: 0.35),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+              spreadRadius: -4,
             ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.table_restaurant_rounded, color: Colors.white, size: 13),
-                SizedBox(width: 5),
-                Text(
-                  'TABLE 7',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Back button
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
             ),
-          ),
-          Hero(
-            tag: 'app_logo',
-            child: Image.asset(
-              'assets/logo.jpg',
-              height: 38,
-              fit: BoxFit.contain,
+            const SizedBox(width: 14),
+
+            // Logo + mode badge
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image.asset(
+                    'assets/logo.jpg',
+                    height: 30,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: _gold.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: _gold.withValues(alpha: 0.4), width: 1),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.table_restaurant_rounded, color: Color(0xFFC88B1A), size: 11),
+                            SizedBox(width: 4),
+                            Text(
+                              'TABLE 7  •  DINE-IN',
+                              style: TextStyle(
+                                color: Color(0xFFC88B1A),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
+
+            // Cart button
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CartScreen()),
+              ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 22),
+                  ),
+                  if (cart.totalItems > 0)
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: _gold,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF0F2A1A), width: 2),
+                        ),
+                        child: Text(
+                          '${cart.totalItems}',
+                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 50,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFEAE8E2), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
-          _circleButton(
-            icon: Icons.shopping_cart_outlined,
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CartScreen())),
+        ],
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.search_rounded, size: 20, color: Color(0xFFB0AEAA)),
+          SizedBox(width: 10),
+          Text(
+            'Search in the menu...',
+            style: TextStyle(color: Color(0xFFB0AEAA), fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _circleButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+  Widget _buildCategoryBar() {
+    return SizedBox(
+      height: 44,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _categories.length,
+        itemBuilder: (ctx, i) {
+          final cat = _categories[i];
+          final active = _selectedCategory == cat;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedCategory = cat),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
+              margin: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(
+                gradient: active
+                    ? const LinearGradient(
+                        colors: [Color(0xFF0F2A1A), Color(0xFF1E5C3A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: active ? null : Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: active ? Colors.transparent : const Color(0xFFE0DDD8),
+                  width: 1.5,
+                ),
+                boxShadow: active
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF0F2A1A).withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        )
+                      ]
+                    : [],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                cat,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: active ? Colors.white : const Color(0xFF6A6865),
+                  letterSpacing: 0.2,
+                ),
+              ),
             ),
-          ],
-        ),
-        child: Icon(icon, size: 18, color: _darkGreen),
+          );
+        },
       ),
     );
   }
 
-  // ── Grid Item Card ──────────────────────────────────────────────────────
   Widget _buildGridCard(MenuItem item, CartProvider cart) {
-    final cartItemIndex = cart.items.indexWhere((e) => e.name == item.name);
-    final qty = cartItemIndex >= 0 ? cart.items[cartItemIndex].qty : 0;
+    final qty = cart.getItemQuantity(item.name);
 
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
@@ -137,60 +297,89 @@ class _DineInScreenState extends State<DineInScreen> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 15,
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 18,
               offset: const Offset(0, 6),
+              spreadRadius: -2,
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Stack
+            // Image area
             Expanded(
-              flex: 4,
+              flex: 5,
               child: Stack(
                 children: [
-                  Hero(
-                    tag: 'item_dine_${item.id}',
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      child: Image.network(
-                        item.imageUrl,
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          color: const Color(0xFFF2EFEE),
-                          child: const Center(
-                            child: Icon(Icons.image_not_supported_outlined, color: Color(0xFFB0AEAA), size: 32),
-                          ),
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: Image.network(
+                      item.imageUrl,
+                      width: double.infinity,
+                      height: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: const Color(0xFFF0EDE6),
+                        child: const Center(
+                          child: Icon(Icons.fastfood_rounded, color: Color(0xFFCECCC8), size: 36),
                         ),
                       ),
                     ),
                   ),
-                  Positioned(top: 10, left: 10, child: _vegIndicator(item.isVeg)),
+                  // Gradient overlay at bottom of image
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 50,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Veg indicator
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: _vegIndicator(item.isVeg),
+                  ),
+                  // Tag badge
                   if (item.tag != null)
                     Positioned(
-                      bottom: 0,
-                      right: 0,
+                      bottom: 8,
+                      left: 10,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: const BoxDecoration(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
                           color: _gold,
-                          borderRadius: BorderRadius.only(topLeft: Radius.circular(15)),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(item.tag!, style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                        child: Text(
+                          item.tag!.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
                 ],
               ),
             ),
+
             // Content
             Expanded(
               flex: 3,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -198,20 +387,34 @@ class _DineInScreenState extends State<DineInScreen> {
                       item.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'Georgia', color: _darkGreen),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'Georgia',
+                        color: _darkGreen,
+                        letterSpacing: -0.2,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       item.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, color: Color(0xFF8A8884), height: 1.3),
+                      style: const TextStyle(fontSize: 10.5, color: Color(0xFF9A9690), height: 1.3),
                     ),
                     const Spacer(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text('₹${item.price}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _accentGreen)),
+                        Text(
+                          '₹${item.price.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: _lightGreen,
+                          ),
+                        ),
                         _quantityControls(item, cart, qty),
                       ],
                     ),
@@ -227,47 +430,89 @@ class _DineInScreenState extends State<DineInScreen> {
 
   Widget _vegIndicator(bool isVeg) {
     return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(color: Colors.white, border: Border.all(color: isVeg ? Colors.green : Colors.red, width: 1), borderRadius: BorderRadius.circular(3)),
-      child: Container(width: 6, height: 6, decoration: BoxDecoration(color: isVeg ? Colors.green : Colors.red, shape: BoxShape.circle)),
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: isVeg ? const Color(0xFF2D8653) : Colors.red, width: 1.5),
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 1)),
+        ],
+      ),
+      child: Container(
+        width: 7,
+        height: 7,
+        decoration: BoxDecoration(
+          color: isVeg ? const Color(0xFF2D8653) : Colors.red,
+          shape: BoxShape.circle,
+        ),
+      ),
     );
   }
 
   Widget _quantityControls(MenuItem item, CartProvider cart, int qty) {
     if (qty == 0) {
       return GestureDetector(
-        onTap: () => cart.addItem(CartEntry(name: item.name, price: item.price, imageUrl: item.imageUrl, qty: 1)),
+        onTap: () => cart.addItem(CartEntry(
+          name: item.name,
+          price: item.price,
+          imageUrl: item.imageUrl,
+          qty: 1,
+        )),
         child: Container(
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(color: _darkGreen, shape: BoxShape.circle),
-          child: const Icon(Icons.add, color: Colors.white, size: 16),
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0F2A1A), Color(0xFF1E5C3A)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1E5C3A).withValues(alpha: 0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
         ),
       );
     }
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(color: _bgCream, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFEAE8E4))),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0EFEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE0DDD8), width: 1),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
             onTap: () {
-              final idx = cart.items.indexWhere((e) => e.name == item.name);
+              final idx = cart.findFirstIndexByName(item.name);
               cart.decrementQuantity(idx);
             },
-            child: const Icon(Icons.remove, size: 14, color: _darkGreen),
+            child: const Padding(
+              padding: EdgeInsets.all(6),
+              child: Icon(Icons.remove_rounded, size: 14, color: _accentGreen),
+            ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Text('$qty', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _darkGreen)),
+          Text(
+            '$qty',
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _darkGreen),
           ),
           GestureDetector(
             onTap: () {
-              final idx = cart.items.indexWhere((e) => e.name == item.name);
+              final idx = cart.findFirstIndexByName(item.name);
               cart.incrementQuantity(idx);
             },
-            child: const Icon(Icons.add, size: 14, color: _darkGreen),
+            child: const Padding(
+              padding: EdgeInsets.all(6),
+              child: Icon(Icons.add_rounded, size: 14, color: _accentGreen),
+            ),
           ),
         ],
       ),
@@ -285,105 +530,127 @@ class _DineInScreenState extends State<DineInScreen> {
         child: Column(
           children: [
             _buildHeader(cart),
-            
-            // Search Bar Placeholder (consistent style)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                height: 48,
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)]),
-                child: const Row(
-                  children: [
-                    Icon(Icons.search, size: 20, color: Color(0xFFB0AEAA)),
-                    SizedBox(width: 12),
-                    Text('Search in Dine-In Menu...', style: TextStyle(color: Color(0xFFB0AEAA), fontSize: 13)),
-                  ],
-                ),
-              ),
-            ),
-
-            // Category Scroll
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: SizedBox(
-                height: 38,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _categories.length,
-                  itemBuilder: (ctx, i) {
-                    final cat = _categories[i];
-                    final active = _selectedCategory == cat;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedCategory = cat),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        margin: const EdgeInsets.only(right: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 18),
-                        decoration: BoxDecoration(color: active ? _darkGreen : Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: active ? Colors.transparent : const Color(0xFFEAE8E4))),
-                        alignment: Alignment.center,
-                        child: Text(cat.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: active ? Colors.white : const Color(0xFF6A6865), letterSpacing: 0.5)),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-
-            // Item Grid
+            const SizedBox(height: 8),
+            _buildSearchBar(),
+            const SizedBox(height: 12),
+            _buildCategoryBar(),
+            const SizedBox(height: 12),
             Expanded(
-              child: items.isEmpty 
-              ? const Center(child: Text('No items found.'))
-              : GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 100),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.58,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (ctx, i) => _buildGridCard(items[i], cart),
-                ),
+              child: items.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.restaurant_rounded, size: 64, color: Colors.black.withValues(alpha: 0.1)),
+                          const SizedBox(height: 16),
+                          const Text('No items in this category.',
+                              style: TextStyle(color: Color(0xFF9A9690), fontSize: 15)),
+                        ],
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 14,
+                        mainAxisSpacing: 14,
+                        childAspectRatio: 0.60,
+                      ),
+                      itemCount: items.length,
+                      itemBuilder: (ctx, i) => _buildGridCard(items[i], cart),
+                    ),
             ),
           ],
         ),
       ),
+      bottomSheet: cart.totalItems > 0
+          ? _buildCartBanner(cart)
+          : null,
+      bottomNavigationBar: const CustomBottomNavBar(activeIndex: 0),
+    );
+  }
 
-      // ── Cart Bottom Sheet ─────────────────────────────────────────────
-      bottomSheet: cart.totalItems > 0 
-        ? Container(
-            padding: const EdgeInsets.fromLTRB(25, 12, 25, 25),
-            decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, -10))]),
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CartScreen())),
-              child: Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(color: _darkGreen, borderRadius: BorderRadius.circular(20)),
-                child: Row(
+  Widget _buildCartBanner(CartProvider cart) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -8),
+          ),
+        ],
+      ),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const CartScreen()),
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0F2A1A), Color(0xFF1A4A2E)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F2A1A).withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.shopping_bag_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${cart.totalItems} ${cart.totalItems == 1 ? 'item' : 'items'} in cart',
+                    style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '₹${cart.subtotal.toStringAsFixed(0)}',
+                    style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC88B1A),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
                   children: [
-                    const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 22),
-                    const SizedBox(width: 12),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${cart.totalItems} ITEMS', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w800)),
-                        Text('₹${cart.subtotal}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
-                      ],
+                    Text(
+                      'CHECKOUT',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
                     ),
-                    const Spacer(),
-                    const Text('CHECKOUT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1)),
-                    const Icon(Icons.arrow_right_alt_rounded, color: Colors.white),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 12),
                   ],
                 ),
               ),
-            ),
-          )
-        : null,
-
-      bottomNavigationBar: const CustomBottomNavBar(activeIndex: 0),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

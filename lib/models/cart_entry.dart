@@ -40,6 +40,20 @@ class CartEntry {
       instructions: json['instructions'] as String?,
     );
   }
+
+  bool isSameItem(CartEntry other) {
+    if (name != other.name) return false;
+    if (instructions != other.instructions) return false;
+    
+    // Check options (order doesn't matter for logical equality)
+    if (selectedOptions.length != other.selectedOptions.length) return false;
+    final otherOptions = List<String>.from(other.selectedOptions);
+    for (final opt in selectedOptions) {
+      if (!otherOptions.remove(opt)) return false;
+    }
+    
+    return true;
+  }
 }
 
 /// Which mode the user arrived from.

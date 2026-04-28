@@ -68,9 +68,11 @@ class _CartScreenState extends State<CartScreen> {
   bool _useLoyalty = false;
   DeliveryAddress? _deliveryAddress; // for delivery mode
 
-  static const Color _darkGreen = Color(0xFF1E3D2A);
+  static const Color _darkGreen = Color(0xFF0F2A1A);
+  static const Color _accentGreen = Color(0xFF1E5C3A);
   static const Color _priceGreen = Color(0xFF2D8653);
-  static const Color _bgCream = Color(0xFFF5F4F0);
+  static const Color _gold = Color(0xFFC88B1A);
+  static const Color _bgCream = Color(0xFFF4F2EC);
 
   @override
   void initState() {
@@ -128,21 +130,31 @@ class _CartScreenState extends State<CartScreen> {
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
+        padding: const EdgeInsets.only(right: 24),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFECEC),
-          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFECEC), Color(0xFFFFD6D6)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: const Icon(Icons.delete_outline_rounded,
-            color: Color(0xFFD44040), size: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.delete_outline_rounded, color: Color(0xFFD44040), size: 26),
+            SizedBox(height: 4),
+            Text('Remove', style: TextStyle(color: Color(0xFFD44040), fontSize: 10, fontWeight: FontWeight.w700)),
+          ],
+        ),
       ),
       onDismissed: (_) => cart.removeItemAt(index),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -155,17 +167,17 @@ class _CartScreenState extends State<CartScreen> {
           children: [
             // Item image
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               child: Image.network(
                 entry.imageUrl,
-                width: 64,
-                height: 64,
+                width: 76,
+                height: 76,
                 fit: BoxFit.cover,
                 loadingBuilder: (ctx, child, progress) => progress == null
                     ? child
                     : Container(
-                        width: 64,
-                        height: 64,
+                        width: 76,
+                        height: 76,
                         color: const Color(0xFFEFEEEA),
                         child: const Center(
                           child: CircularProgressIndicator(
@@ -175,14 +187,14 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ),
                 errorBuilder: (ctx, err, stack) => Container(
-                  width: 64,
-                  height: 64,
+                  width: 76,
+                  height: 76,
                   decoration: BoxDecoration(
                     color: const Color(0xFFF0EFEA),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(Icons.restaurant_rounded,
-                      color: Color(0xFFCECCC8), size: 24),
+                      color: Color(0xFFCECCC8), size: 28),
                 ),
               ),
             ),
@@ -457,6 +469,34 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  // ── Summary row (dark theme for bill card) ─────────────────────────────────
+  Widget _summaryRowDark(String label, double amount, {bool isDiscount = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white60,
+            ),
+          ),
+          Text(
+            isDiscount ? '-₹${amount.abs().toStringAsFixed(2)}' : '₹${amount.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: isDiscount ? const Color(0xFF8FCF8F) : Colors.white70,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
 
   @override
@@ -479,22 +519,27 @@ class _CartScreenState extends State<CartScreen> {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.of(context).pop(),
-                      child: const Icon(Icons.arrow_back_rounded,
-                          size: 26, color: Color(0xFF1C1A17)),
-                    ),
-                    const Spacer(),
-                    const Text(
-                      'Cart Selection',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontFamily: 'Georgia',
-                        fontWeight: FontWeight.w800,
-                        fontStyle: FontStyle.italic,
-                        color: Color(0xFF1C1A17),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.06),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: Color(0xFF1C1A17)),
                       ),
                     ),
                     const Spacer(),
-                    const SizedBox(width: 26),
+                    Image.asset('assets/logo.jpg', height: 32, fit: BoxFit.contain),
+                    const Spacer(),
+                    const SizedBox(width: 40),
                   ],
                 ),
               ),
@@ -597,19 +642,24 @@ class _CartScreenState extends State<CartScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        size: 26, color: Color(0xFF1C1A17)),
-                  ),
-                  const Text(
-                    'Cart Section',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontFamily: 'Georgia',
-                      fontWeight: FontWeight.w800,
-                      fontStyle: FontStyle.italic,
-                      color: Color(0xFF1C1A17),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: Color(0xFF1C1A17)),
                     ),
                   ),
+                  Image.asset('assets/logo.jpg', height: 32, fit: BoxFit.contain),
                   GestureDetector(
                     onTap: () {
                       Navigator.of(context).push(
@@ -617,14 +667,17 @@ class _CartScreenState extends State<CartScreen> {
                       );
                     },
                     child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2B2925),
-                        shape: BoxShape.circle,
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F2A1A), Color(0xFF1E5C3A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.person_rounded,
-                          color: Colors.white, size: 20),
+                      child: const Icon(Icons.person_rounded, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -645,47 +698,75 @@ class _CartScreenState extends State<CartScreen> {
                     // ── Order Mode Banner ──────────────────────────────────
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: mode.bg,
-                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          colors: [mode.bg, Color.lerp(mode.bg, Colors.black, 0.2)!],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: mode.bg.withValues(alpha: 0.4),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                            spreadRadius: -4,
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
                           Container(
-                            width: 42,
-                            height: 42,
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            child: Icon(mode.icon,
-                                color: Colors.white, size: 20),
+                            child: Icon(mode.icon, color: Colors.white, size: 24),
                           ),
                           const SizedBox(width: 14),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'ORDER MODE',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white54,
-                                  letterSpacing: 1.2,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'ORDER MODE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white60,
+                                    letterSpacing: 1.5,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                mode.label,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                                const SizedBox(height: 4),
+                                Text(
+                                  mode.label,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
                                 ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Text(
+                              'CHANGE',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
                               ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
@@ -856,50 +937,98 @@ class _CartScreenState extends State<CartScreen> {
 
                     // ── Bill summary ───────────────────────────────────────
                     Container(
-                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F2A1A), Color(0xFF163C25)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: const Color(0xFF0F2A1A).withValues(alpha: 0.35),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                            spreadRadius: -4,
                           ),
                         ],
                       ),
-                      child: Column(
-                        children: [
-                          _summaryRow('SUBTOTAL', _subtotal(cart)),
-                          _summaryRow('GST (5%)', _gst(cart)),
-                          _summaryRow('SERVICE CHARGE', _serviceCharge),
-                          if (_useLoyalty)
-                            _summaryRow('LOYALTY DISCOUNT', -_loyaltyDiscount,
-                                color: _priceGreen),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Divider(color: Color(0xFFEAE8E4), height: 1),
-                          ),
-                          _summaryRow('TOTAL', _total(cart),
-                              bold: true, color: const Color(0xFF1C1A17)),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.receipt_long_rounded, color: Colors.white54, size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  'BILL SUMMARY',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white54,
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _summaryRowDark('Subtotal', _subtotal(cart)),
+                            _summaryRowDark('GST (5%)', _gst(cart)),
+                            _summaryRowDark('Service charge', _serviceCharge),
+                            if (_useLoyalty)
+                              _summaryRowDark('Loyalty discount', -_loyaltyDiscount, isDiscount: true),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: Divider(color: Colors.white12, height: 1),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    fontFamily: 'Georgia',
+                                  ),
+                                ),
+                                Text(
+                                  '₹${_total(cart).toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFFC88B1A),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
                     const SizedBox(height: 24),
 
                     // ── Proceed to Checkout ────────────────────────────────
+                    const SizedBox(height: 4),
                     Container(
                       width: double.infinity,
-                      height: 60,
+                      height: 64,
                       decoration: BoxDecoration(
-                        color: _darkGreen,
-                        borderRadius: BorderRadius.circular(20),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFB8860B), Color(0xFFDAA520), Color(0xFFC88B1A)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
-                            color: _darkGreen.withValues(alpha: 0.3),
-                            blurRadius: 15,
+                            color: const Color(0xFFC88B1A).withValues(alpha: 0.45),
+                            blurRadius: 20,
                             offset: const Offset(0, 8),
+                            spreadRadius: -4,
                           ),
                         ],
                       ),
@@ -922,28 +1051,29 @@ class _CartScreenState extends State<CartScreen> {
                               ),
                             );
                           },
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(22),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
+                              const SizedBox(width: 10),
                               const Text(
                                 'Proceed to Checkout',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 10),
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.arrow_forward_rounded,
-                                    color: Colors.white, size: 18),
+                                child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
                               ),
                             ],
                           ),
