@@ -43,7 +43,7 @@ class ReviewService {
   /// Get public reviews for a specific menu item
   Future<List<ItemReview>> getItemReviews(String menuItemId) async {
     try {
-      final response = await apiClient.get('/menu/$menuItemId/reviews');
+      final response = await apiClient.get('/reviews/menu/$menuItemId');
       return (response['data'] as List)
           .map((r) => ItemReview.fromJson(r as Map<String, dynamic>))
           .toList();
@@ -120,7 +120,7 @@ class ItemReview {
   factory ItemReview.fromJson(Map<String, dynamic> json) {
     String name = json['customerName'] ?? json['customer_name'] ?? '';
     if (name.isEmpty) {
-      final first = (json['firstName'] ?? json['first_name'] ?? '') as String;
+      final first = (json['reviewerFirstName'] ?? json['firstName'] ?? json['first_name'] ?? '') as String;
       final last = (json['lastName'] ?? json['last_name'] ?? '') as String;
       if (first.isNotEmpty) {
         name = last.isNotEmpty
