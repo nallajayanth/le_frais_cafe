@@ -6,6 +6,7 @@ import '../../providers/payment_provider.dart';
 import '../../providers/delivery_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api/order_service.dart';
+import '../../services/api/payment_service.dart';
 import '../order/payment_success_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -83,6 +84,9 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     _ctaScale = Tween<double>(begin: 1.0, end: 0.97).animate(
       CurvedAnimation(parent: _ctaController, curve: Curves.easeInOut),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PaymentProvider>().loadAvailableDiscounts();
+    });
   }
 
   @override
@@ -92,14 +96,12 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     super.dispose();
   }
 
+  // Called by the backend after order creation to officially record the discount.
   Future<void> _applyDiscount(String orderId) async {
-    final code = _discountCtrl.text.trim().toUpperCase();
+    final code = _appliedCode ?? _discountCtrl.text.trim().toUpperCase();
     if (code.isEmpty) return;
 
-    setState(() {
-      _isApplyingDiscount = true;
-      _discountError = null;
-    });
+    setState(() => _isApplyingDiscount = true);
 
     final paymentProvider = context.read<PaymentProvider>();
     final ok = await paymentProvider.applyDiscount(
@@ -122,6 +124,43 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       });
     }
     setState(() => _isApplyingDiscount = false);
+  }
+
+  // Client-side validation for immediate UI feedback before order creation.
+  void _validateAndApplyCode() {
+    final code = _discountCtrl.text.trim().toUpperCase();
+    if (code.isEmpty) {
+      setState(() => _discountError = 'Please enter a discount code');
+      return;
+    }
+
+    final discounts = context.read<PaymentProvider>().availableDiscounts;
+    final discount = discounts.where((d) => d.code == code).firstOrNull;
+
+    if (discount == null || !discount.isValid) {
+      setState(() {
+        _discountError = 'Invalid or expired discount code';
+        _discountAmount = 0;
+        _appliedCode = null;
+      });
+      return;
+    }
+
+    if (widget.subtotal < discount.minOrderValue) {
+      setState(() {
+        _discountError =
+            'Minimum order of ₹${discount.minOrderValue.toStringAsFixed(0)} required';
+        _discountAmount = 0;
+        _appliedCode = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _discountAmount = discount.calculateDiscount(widget.subtotal);
+      _appliedCode = code;
+      _discountError = null;
+    });
   }
 
   Future<void> _placeOrder() async {
@@ -156,7 +195,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         items: orderItems,
         tableNumber: widget.tableNumber,
         deliveryAddressId: deliveryProvider.selectedAddress?.id,
-        discount: _discountAmount > 0 ? _discountAmount : null,
+        // Discount is applied via apply-discount API below to avoid double-counting.
+        paymentMethod: paymentMethodStr,
       );
 
       if (orderId == null || !mounted) {
@@ -170,8 +210,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         return;
       }
 
-      // Apply discount code if entered but not yet applied
-      if (_discountCtrl.text.isNotEmpty && _appliedCode == null) {
+      // Apply discount code via backend API (records it on the order).
+      if (_appliedCode != null || _discountCtrl.text.trim().isNotEmpty) {
         await _applyDiscount(orderId);
       }
 
@@ -730,6 +770,9 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   }
 
   Widget _buildDiscountSection() {
+    final availableDiscounts =
+        context.watch<PaymentProvider>().availableDiscounts;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -794,6 +837,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
             ),
           ] else ...[
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: TextField(
@@ -822,28 +866,17 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _accentGreen, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: _accentGreen, width: 1.5),
                       ),
                       errorText: _discountError,
                     ),
-                    onSubmitted: (_) {},
+                    onSubmitted: (_) => _validateAndApplyCode(),
                   ),
                 ),
                 const SizedBox(width: 10),
                 GestureDetector(
-                  onTap: _isApplyingDiscount
-                      ? null
-                      : () {
-                          // We need an orderId to apply discount; show a hint
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Discount will be applied after order creation',
-                              ),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
+                  onTap: _isApplyingDiscount ? null : _validateAndApplyCode,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -874,17 +907,68 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Try: WELCOME10 · SAVE20 · FLAT50',
-              style: TextStyle(
-                fontSize: 10,
-                color: Color(0xFFAFADAA),
-                letterSpacing: 0.5,
+            if (availableDiscounts.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Available offers',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF9A9690),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: availableDiscounts
+                      .map((d) => _buildDiscountChip(d))
+                      .toList(),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiscountChip(DiscountCode d) {
+    return GestureDetector(
+      onTap: () {
+        _discountCtrl.text = d.code;
+        _validateAndApplyCode();
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F9F4),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _accentGreen.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.local_offer_outlined,
+              size: 11,
+              color: _accentGreen,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              '${d.code}  ·  ${d.displayValue}',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: _accentGreen,
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
