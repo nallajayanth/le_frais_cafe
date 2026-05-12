@@ -28,6 +28,7 @@ class OrderProvider extends ChangeNotifier {
     String? deliveryAddressId,
     String? specialInstructions,
     double? discount,
+    String? paymentMethod,
   }) async {
     _isLoading = true;
     _error = null;
@@ -41,6 +42,7 @@ class OrderProvider extends ChangeNotifier {
         deliveryAddressId: deliveryAddressId,
         specialInstructions: specialInstructions,
         discount: discount,
+        paymentMethod: paymentMethod,
       );
 
       _error = null;

@@ -777,6 +777,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                         // SET (not add) the cart quantity so tapping "Add to Cart"
                         // reflects exactly the stepper value — no double-counting.
                         cart.setItem(CartEntry(
+                          itemId: widget.menuItemId,
                           name: widget.name,
                           price: _currentPrice,
                           imageUrl: widget.imageUrl,

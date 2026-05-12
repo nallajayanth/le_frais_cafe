@@ -5,9 +5,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Core API client for all backend communication
 class ApiClient {
-  static const String baseUrl = 'http://localhost:4000/api';
+  static const String baseUrl = 'https://le-frais-backend.onrender.com/api';
   static const String tokenKey = 'auth_token';
   static const String refreshTokenKey = 'refresh_token';
+
+  // Render free tier can take ~30 s to wake from sleep.
+  static const Duration _timeout = Duration(seconds: 30);
 
   final http.Client httpClient;
   final FlutterSecureStorage secureStorage;
@@ -65,11 +68,9 @@ class ApiClient {
   }) async {
     try {
       final url = Uri.parse('$baseUrl$endpoint');
-      final response = await httpClient.get(
-        url,
-        headers: _buildHeaders(includeAuth: requiresAuth),
-      );
-
+      final response = await httpClient
+          .get(url, headers: _buildHeaders(includeAuth: requiresAuth))
+          .timeout(_timeout);
       return _handleResponse(response);
     } catch (e) {
       throw ApiException('Network error: $e');
@@ -84,12 +85,11 @@ class ApiClient {
   }) async {
     try {
       final url = Uri.parse('$baseUrl$endpoint');
-      final response = await httpClient.post(
-        url,
-        headers: _buildHeaders(includeAuth: requiresAuth),
-        body: jsonEncode(body),
-      );
-
+      final response = await httpClient
+          .post(url,
+              headers: _buildHeaders(includeAuth: requiresAuth),
+              body: jsonEncode(body))
+          .timeout(_timeout);
       return _handleResponse(response);
     } catch (e) {
       throw ApiException('Network error: $e');
@@ -104,12 +104,11 @@ class ApiClient {
   }) async {
     try {
       final url = Uri.parse('$baseUrl$endpoint');
-      final response = await httpClient.put(
-        url,
-        headers: _buildHeaders(includeAuth: requiresAuth),
-        body: jsonEncode(body),
-      );
-
+      final response = await httpClient
+          .put(url,
+              headers: _buildHeaders(includeAuth: requiresAuth),
+              body: jsonEncode(body))
+          .timeout(_timeout);
       return _handleResponse(response);
     } catch (e) {
       throw ApiException('Network error: $e');
@@ -123,11 +122,9 @@ class ApiClient {
   }) async {
     try {
       final url = Uri.parse('$baseUrl$endpoint');
-      final response = await httpClient.delete(
-        url,
-        headers: _buildHeaders(includeAuth: requiresAuth),
-      );
-
+      final response = await httpClient
+          .delete(url, headers: _buildHeaders(includeAuth: requiresAuth))
+          .timeout(_timeout);
       return _handleResponse(response);
     } catch (e) {
       throw ApiException('Network error: $e');
@@ -217,19 +214,17 @@ class ApiException implements Exception {
 }
 
 class UnauthorizedException extends ApiException {
-  UnauthorizedException(String message)
-    : super(message, errorCode: 'UNAUTHORIZED');
+  UnauthorizedException(super.message) : super(errorCode: 'UNAUTHORIZED');
 }
 
 class ForbiddenException extends ApiException {
-  ForbiddenException(String message) : super(message, errorCode: 'FORBIDDEN');
+  ForbiddenException(super.message) : super(errorCode: 'FORBIDDEN');
 }
 
 class ServerException extends ApiException {
-  ServerException(String message) : super(message, errorCode: 'SERVER_ERROR');
+  ServerException(super.message) : super(errorCode: 'SERVER_ERROR');
 }
 
 class TokenExpiredException extends ApiException {
-  TokenExpiredException(String message)
-    : super(message, errorCode: 'TOKEN_EXPIRED');
+  TokenExpiredException(super.message) : super(errorCode: 'TOKEN_EXPIRED');
 }

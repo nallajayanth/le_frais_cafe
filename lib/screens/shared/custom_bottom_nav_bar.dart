@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
-import '../order/order_preference_screen.dart';
+
 import '../menu/menu_screen.dart';
 import '../order/order_history_screen.dart';
 import '../cart/cart_screen.dart';
@@ -11,19 +11,14 @@ import '../profile/profile_screen.dart';
 class CustomBottomNavBar extends StatelessWidget {
   final int activeIndex;
 
-  const CustomBottomNavBar({
-    super.key,
-    required this.activeIndex,
-  });
+  const CustomBottomNavBar({super.key, required this.activeIndex});
 
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.transparent,
-      ),
+      decoration: const BoxDecoration(color: Colors.transparent),
       child: SafeArea(
         child: Container(
           margin: const EdgeInsets.fromLTRB(20, 8, 20, 12),
@@ -57,7 +52,9 @@ class CustomBottomNavBar extends StatelessWidget {
                 label: 'Home',
                 onTap: () {
                   if (activeIndex == 0) return;
-                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(
+                    context,
+                  ).popUntil((r) => r.isFirst || r.settings.name == '/home');
                 },
               ),
               _navItem(
@@ -69,7 +66,9 @@ class CustomBottomNavBar extends StatelessWidget {
                 label: 'Menu',
                 onTap: () {
                   if (activeIndex == 1) return;
-                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(
+                    context,
+                  ).popUntil((r) => r.isFirst || r.settings.name == '/home');
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const MenuScreen(),
@@ -87,7 +86,9 @@ class CustomBottomNavBar extends StatelessWidget {
                 label: 'Orders',
                 onTap: () {
                   if (activeIndex == 2) return;
-                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(
+                    context,
+                  ).popUntil((r) => r.isFirst || r.settings.name == '/home');
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const OrderHistoryScreen(),
@@ -107,7 +108,9 @@ class CustomBottomNavBar extends StatelessWidget {
                 badgeCount: cart.totalItems,
                 onTap: () {
                   if (activeIndex == 3) return;
-                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(
+                    context,
+                  ).popUntil((r) => r.isFirst || r.settings.name == '/home');
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const CartScreen(),
@@ -125,7 +128,9 @@ class CustomBottomNavBar extends StatelessWidget {
                 label: 'Profile',
                 onTap: () {
                   if (activeIndex == 4) return;
-                  Navigator.of(context).popUntil((r) => r.isFirst || r.settings.name == '/home');
+                  Navigator.of(
+                    context,
+                  ).popUntil((r) => r.isFirst || r.settings.name == '/home');
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => const ProfileScreen(),
@@ -190,9 +195,15 @@ class CustomBottomNavBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFFC88B1A),
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF0F2A1A), width: 1.5),
+                        border: Border.all(
+                          color: const Color(0xFF0F2A1A),
+                          width: 1.5,
+                        ),
                       ),
-                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
                       child: Text(
                         '$badgeCount',
                         style: const TextStyle(

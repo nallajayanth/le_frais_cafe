@@ -96,8 +96,9 @@ class MenuCategory {
       id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'],
-      imageUrl: json['imageUrl'],
-      sortOrder: json['sortOrder'],
+      imageUrl: json['imageUrl'] ?? json['image_url'],
+      // backend sends "displayOrder" (aliased from display_order)
+      sortOrder: json['displayOrder'] ?? json['sortOrder'],
     );
   }
 }

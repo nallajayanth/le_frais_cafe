@@ -20,12 +20,16 @@ import 'services/api/notification_service.dart';
 import 'services/api/review_service.dart';
 import 'services/api/support_service.dart';
 import 'screens/onboarding/onboarding_screen.dart';
+import 'screens/order/order_preference_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   final apiClient = ApiClient();
+  await apiClient.initialize();
+  final bool isLoggedIn = apiClient.getToken() != null;
+
   final menuService = MenuService(apiClient: apiClient);
   final orderService = OrderService(apiClient: apiClient);
   final authService = AuthService(apiClient: apiClient);
@@ -60,13 +64,14 @@ void main() async {
             create: (_) =>
                 SupportProvider(supportService: supportService)),
       ],
-      child: const LeFraisApp(),
+      child: LeFraisApp(isLoggedIn: isLoggedIn),
     ),
   );
 }
 
 class LeFraisApp extends StatelessWidget {
-  const LeFraisApp({super.key});
+  final bool isLoggedIn;
+  const LeFraisApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +83,7 @@ class LeFraisApp extends StatelessWidget {
         fontFamily: 'sans-serif',
         useMaterial3: true,
       ),
-      home: const OnboardingScreen(),
+      home: isLoggedIn ? const OrderPreferenceScreen() : const OnboardingScreen(),
     );
   }
 }

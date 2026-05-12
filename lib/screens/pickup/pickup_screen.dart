@@ -20,6 +20,7 @@ class _PickupScreenState extends State<PickupScreen> {
   // null = "All" selected
   String? _selectedCategoryId;
   String _searchQuery = '';
+  bool _usingApiData = false;
   final TextEditingController _searchController = TextEditingController();
   bool _searchFocused = false;
 
@@ -30,7 +31,7 @@ class _PickupScreenState extends State<PickupScreen> {
   static const Color _gold = Color(0xFFC88B1A);
 
   static const List<String> _staticCategories = [
-    'All', 'Appetizers', 'Chinese Starters', 'Momos', 'Burgers', 'Noodles', 'Rice',
+    'All', 'Appetizers', 'Chinese Starters', 'Momos', 'Main Course', 'Beverages', 'Desserts',
   ];
 
   @override
@@ -69,8 +70,10 @@ class _PickupScreenState extends State<PickupScreen> {
   }
 
   List<(String?, String)> _getCategoryOptions(MenuProvider menu) {
-    if (menu.categories.isNotEmpty) {
-      return [(null, 'All'), ...menu.categories.map((c) => (c.id, c.name))];
+    // Use category NAME as filterId — the backend returns item.category as a
+    // name string ("Appetizers", etc.) so filterId must also be the name.
+    if (menu.menuItems.isNotEmpty && menu.categories.isNotEmpty) {
+      return [(null, 'All'), ...menu.categories.map((c) => (c.name, c.name))];
     }
     return _staticCategories.map((name) => (name == 'All' ? null : name, name)).toList();
   }
@@ -506,7 +509,7 @@ class _PickupScreenState extends State<PickupScreen> {
     if (qty == 0) {
       return GestureDetector(
         onTap: () => cart.addItem(
-          CartEntry(name: item.name, price: item.price, imageUrl: item.imageUrl, qty: 1),
+          CartEntry(itemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl, qty: 1),
         ),
         child: Container(
           width: 32,
@@ -614,6 +617,19 @@ class _PickupScreenState extends State<PickupScreen> {
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
     final menu = context.watch<MenuProvider>();
+
+    // When API items finish loading, reset any stale static-data filterId.
+    if (!_usingApiData && menu.menuItems.isNotEmpty) {
+      Future.microtask(() {
+        if (mounted) {
+          setState(() {
+            _usingApiData = true;
+            _selectedCategoryId = null;
+          });
+        }
+      });
+    }
+
     final items = _getFilteredItems(menu);
     final categoryOptions = _getCategoryOptions(menu);
 

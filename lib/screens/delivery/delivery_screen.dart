@@ -552,7 +552,7 @@ class _DeliveryScreenState extends State<DeliveryScreen>
   Widget _quantityControls(MenuItem item, CartProvider cart, int qty) {
     if (qty == 0) {
       return GestureDetector(
-        onTap: () => cart.addItem(CartEntry(name: item.name, price: item.price, imageUrl: item.imageUrl, qty: 1)),
+        onTap: () => cart.addItem(CartEntry(itemId: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl, qty: 1)),
         child: Container(
           width: 38,
           height: 38,

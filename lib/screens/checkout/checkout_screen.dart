@@ -4,7 +4,6 @@ import '../../models/cart_entry.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/delivery_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../services/api/order_service.dart';
 import '../../services/api/payment_service.dart';
 import '../order/payment_success_screen.dart';
@@ -127,14 +126,41 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   }
 
   // Client-side validation for immediate UI feedback before order creation.
-  void _validateAndApplyCode() {
+  // If discounts haven't loaded yet (e.g. Render cold start), retries once
+  // and falls back to tentative acceptance so the server validates at order time.
+  Future<void> _validateAndApplyCode() async {
     final code = _discountCtrl.text.trim().toUpperCase();
     if (code.isEmpty) {
       setState(() => _discountError = 'Please enter a discount code');
       return;
     }
 
-    final discounts = context.read<PaymentProvider>().availableDiscounts;
+    setState(() {
+      _isApplyingDiscount = true;
+      _discountError = null;
+    });
+
+    final paymentProvider = context.read<PaymentProvider>();
+    var discounts = paymentProvider.availableDiscounts;
+
+    // Discounts not loaded yet — fetch them now (handles Render cold-start)
+    if (discounts.isEmpty) {
+      await paymentProvider.loadAvailableDiscounts();
+      if (!mounted) return;
+      discounts = paymentProvider.availableDiscounts;
+    }
+
+    // Server still unreachable: accept tentatively, server validates on placement
+    if (discounts.isEmpty) {
+      setState(() {
+        _appliedCode = code;
+        _discountAmount = 0;
+        _discountError = null;
+        _isApplyingDiscount = false;
+      });
+      return;
+    }
+
     final discount = discounts.where((d) => d.code == code).firstOrNull;
 
     if (discount == null || !discount.isValid) {
@@ -142,6 +168,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         _discountError = 'Invalid or expired discount code';
         _discountAmount = 0;
         _appliedCode = null;
+        _isApplyingDiscount = false;
       });
       return;
     }
@@ -152,6 +179,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
             'Minimum order of ₹${discount.minOrderValue.toStringAsFixed(0)} required';
         _discountAmount = 0;
         _appliedCode = null;
+        _isApplyingDiscount = false;
       });
       return;
     }
@@ -160,6 +188,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       _discountAmount = discount.calculateDiscount(widget.subtotal);
       _appliedCode = code;
       _discountError = null;
+      _isApplyingDiscount = false;
     });
   }
 
@@ -171,11 +200,10 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       final orderProvider = context.read<OrderProvider>();
       final paymentProvider = context.read<PaymentProvider>();
       final deliveryProvider = context.read<DeliveryProvider>();
-      final authProvider = context.read<AuthProvider>();
 
       final orderItems = widget.items
           .map((item) => OrderItem(
-                itemId: item.name.hashCode.abs().toString(),
+                itemId: item.itemId ?? item.name.hashCode.abs().toString(),
                 name: item.name,
                 quantity: item.qty,
                 price: item.price,
@@ -199,7 +227,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         paymentMethod: paymentMethodStr,
       );
 
-      if (orderId == null || !mounted) {
+      if (orderId == null) {
+        if (!mounted) return;
         setState(() => _isPlacingOrder = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -209,6 +238,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         );
         return;
       }
+      if (!mounted) return;
 
       // Apply discount code via backend API (records it on the order).
       if (_appliedCode != null || _discountCtrl.text.trim().isNotEmpty) {
@@ -223,7 +253,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
           paymentMethod: paymentMethodStr,
         );
 
-        if (!payOk || !mounted) {
+        if (!payOk) {
+          if (!mounted) return;
           setState(() => _isPlacingOrder = false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -233,6 +264,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
           );
           return;
         }
+        if (!mounted) return;
 
         final paymentId = paymentProvider.currentPayment?.paymentId ?? '';
 

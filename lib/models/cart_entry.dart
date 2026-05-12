@@ -1,5 +1,6 @@
 /// Shared data model passed from any ordering screen into CartScreen.
 class CartEntry {
+  final String? itemId;
   final String name;
   final double price;
   final String imageUrl;
@@ -8,6 +9,7 @@ class CartEntry {
   int qty;
 
   CartEntry({
+    this.itemId,
     required this.name,
     required this.price,
     required this.imageUrl,
@@ -18,6 +20,7 @@ class CartEntry {
 
   Map<String, dynamic> toJson() {
     return {
+      'itemId': itemId,
       'name': name,
       'price': price,
       'imageUrl': imageUrl,
@@ -29,6 +32,7 @@ class CartEntry {
 
   factory CartEntry.fromJson(Map<String, dynamic> json) {
     return CartEntry(
+      itemId: json['itemId'] as String?,
       name: json['name'] as String,
       price: (json['price'] as num).toDouble(),
       imageUrl: json['imageUrl'] as String,

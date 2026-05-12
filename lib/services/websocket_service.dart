@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 /// WebSocket Service for real-time order tracking
 class WebSocketService extends ChangeNotifier {
-  static const String wsBaseUrl = 'ws://10.0.2.2:4000/api';
+  static const String wsBaseUrl = 'wss://le-frais-backend.onrender.com/api';
 
   WebSocketChannel? _channel;
   String? _currentOrderId;
@@ -51,7 +51,7 @@ class WebSocketService extends ChangeNotifier {
     }
   }
 
-  void _onError(error) {
+  void _onError(Object error) {
     if (kDebugMode) print('WS error: $error');
     notifyListeners();
   }

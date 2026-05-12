@@ -21,6 +21,7 @@ class _DineInScreenState extends State<DineInScreen>
   // null = "All" selected
   String? _selectedCategoryId;
   String _searchQuery = '';
+  bool _usingApiData = false;
   final TextEditingController _searchController = TextEditingController();
   bool _searchFocused = false;
   late AnimationController _headerAnimController;
@@ -33,7 +34,7 @@ class _DineInScreenState extends State<DineInScreen>
   static const Color _bgCream = Color(0xFFF4F2EC);
 
   static const List<String> _staticCategories = [
-    'All', 'Appetizers', 'Chinese Starters', 'Momos', 'Burgers', 'Noodles', 'Rice',
+    'All', 'Appetizers', 'Chinese Starters', 'Momos', 'Main Course', 'Beverages', 'Desserts',
   ];
 
   @override
@@ -85,13 +86,14 @@ class _DineInScreenState extends State<DineInScreen>
   // Returns list of (filterId, displayName) tuples
   // filterId null = "All"
   List<(String?, String)> _getCategoryOptions(MenuProvider menu) {
-    if (menu.categories.isNotEmpty) {
+    // Use category NAME as filterId — the backend returns item.category as a
+    // name string ("Appetizers", etc.) so filterId must also be the name.
+    if (menu.menuItems.isNotEmpty && menu.categories.isNotEmpty) {
       return [
         (null, 'All'),
-        ...menu.categories.map((c) => (c.id, c.name)),
+        ...menu.categories.map((c) => (c.name, c.name)),
       ];
     }
-    // Fallback to static category names
     return _staticCategories.map((name) => (name == 'All' ? null : name, name)).toList();
   }
 
@@ -388,7 +390,7 @@ class _DineInScreenState extends State<DineInScreen>
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (context, error, _) => Container(
                         color: const Color(0xFFF0EDE6),
                         child: const Center(
                           child: Icon(Icons.fastfood_rounded, color: Color(0xFFCECCC8), size: 36),
@@ -519,6 +521,7 @@ class _DineInScreenState extends State<DineInScreen>
     if (qty == 0) {
       return GestureDetector(
         onTap: () => cart.addItem(CartEntry(
+          itemId: item.id,
           name: item.name,
           price: item.price,
           imageUrl: item.imageUrl,
@@ -633,6 +636,19 @@ class _DineInScreenState extends State<DineInScreen>
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
     final menu = context.watch<MenuProvider>();
+
+    // When API items finish loading, reset any stale static-data filterId.
+    if (!_usingApiData && menu.menuItems.isNotEmpty) {
+      Future.microtask(() {
+        if (mounted) {
+          setState(() {
+            _usingApiData = true;
+            _selectedCategoryId = null;
+          });
+        }
+      });
+    }
+
     final items = _getFilteredItems(menu);
     final categoryOptions = _getCategoryOptions(menu);
 

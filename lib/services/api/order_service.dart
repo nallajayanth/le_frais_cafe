@@ -14,6 +14,7 @@ class OrderService {
     String? deliveryAddressId,
     String? specialInstructions,
     double? discount,
+    String? paymentMethod,
   }) async {
     try {
       final body = {
@@ -24,6 +25,7 @@ class OrderService {
         if (specialInstructions != null)
           'specialInstructions': specialInstructions,
         if (discount != null) 'discount': discount,
+        if (paymentMethod != null) 'paymentMethod': paymentMethod,
       };
 
       final response = await apiClient.post('/orders', body);

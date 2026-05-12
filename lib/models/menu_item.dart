@@ -78,12 +78,22 @@ class MenuItem {
           .toList();
     }
 
+    // category may arrive as a populated object {_id, name} or a plain string
+    final catRaw = json['category'];
+    final String categoryId;
+    if (catRaw is Map) {
+      categoryId = (catRaw['_id'] ?? catRaw['id'] ?? '').toString();
+    } else {
+      categoryId =
+          catRaw?.toString() ?? json['categoryId']?.toString() ?? '';
+    }
+
     return MenuItem(
       id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       price: (json['price'] ?? 0).toDouble(),
-      category: json['category'] ?? json['categoryId'] ?? '',
+      category: categoryId,
       imageUrl: json['imageUrl'] ?? json['image_url'] ?? '',
       isVeg: json['isVeg'] ?? json['is_veg'] ?? false,
       rating: json['rating'] != null ? (json['rating']).toDouble() : null,

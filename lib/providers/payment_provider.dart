@@ -9,6 +9,7 @@ class PaymentProvider extends ChangeNotifier {
   PaymentStatus? _paymentStatus;
   List<DiscountCode> _availableDiscounts = [];
   DiscountResponse? _appliedDiscount;
+  bool _cashPaymentConfirmed = false;
   bool _isLoading = false;
   String? _error;
 
@@ -19,6 +20,7 @@ class PaymentProvider extends ChangeNotifier {
   PaymentStatus? get paymentStatus => _paymentStatus;
   List<DiscountCode> get availableDiscounts => _availableDiscounts;
   DiscountResponse? get appliedDiscount => _appliedDiscount;
+  bool get cashPaymentConfirmed => _cashPaymentConfirmed;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -128,6 +130,29 @@ class PaymentProvider extends ChangeNotifier {
     } on PaymentException catch (e) {
       _error = e.message;
       _appliedDiscount = null;
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Confirm cash payment after order is ready/delivered
+  Future<bool> confirmCashPayment({
+    required String orderId,
+    required double amount,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await paymentService.confirmCashPayment(orderId: orderId, amount: amount);
+      _cashPaymentConfirmed = true;
+      _error = null;
+      return true;
+    } on PaymentException catch (e) {
+      _error = e.message;
       return false;
     } finally {
       _isLoading = false;
