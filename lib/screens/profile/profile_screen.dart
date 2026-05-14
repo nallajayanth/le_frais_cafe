@@ -8,6 +8,7 @@ import '../address/address_picker_sheet.dart';
 import '../notifications/notifications_screen.dart';
 import '../support/support_screen.dart';
 import '../shared/custom_bottom_nav_bar.dart';
+import '../../game/food_memory_challenge/memory_challenge_game.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -34,9 +35,9 @@ class ProfileScreen extends StatelessWidget {
         iconColor: const Color(0xFF1E5C3A),
         title: 'Order History',
         subtitle: 'View your past orders',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const OrderHistoryScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const OrderHistoryScreen())),
       ),
       _TileData(
         icon: Icons.location_on_outlined,
@@ -48,10 +49,8 @@ class ProfileScreen extends StatelessWidget {
           context: context,
           isScrollControlled: true,
           backgroundColor: Colors.transparent,
-          builder: (ctx) => AddressPickerSheet(
-            selected: null,
-            onSelected: (_) {},
-          ),
+          builder: (ctx) =>
+              AddressPickerSheet(selected: null, onSelected: (_) {}),
         ),
       ),
       _TileData(
@@ -60,12 +59,10 @@ class ProfileScreen extends StatelessWidget {
         iconColor: const Color(0xFFC88B1A),
         title: 'Notifications',
         subtitle: 'Manage alerts and news',
-        badge: notifProvider.unreadCount > 0
-            ? notifProvider.unreadCount
-            : null,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-        ),
+        badge: notifProvider.unreadCount > 0 ? notifProvider.unreadCount : null,
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
       ),
       _TileData(
         icon: Icons.account_balance_wallet_outlined,
@@ -80,9 +77,9 @@ class ProfileScreen extends StatelessWidget {
         iconColor: const Color(0xFF8B5CF6),
         title: 'Help & Support',
         subtitle: 'FAQs and direct assistance',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const SupportScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const SupportScreen())),
       ),
       _TileData(
         icon: Icons.card_giftcard_rounded,
@@ -90,6 +87,18 @@ class ProfileScreen extends StatelessWidget {
         iconColor: const Color(0xFFE64980),
         title: 'Rewards',
         subtitle: 'See your exclusive rewards',
+      ),
+      _TileData(
+        icon: Icons.sports_esports_rounded,
+        iconBg: const Color(0xFFEFEEFF),
+        iconColor: const Color(0xFF6B5EFF),
+        title: 'Memory Challenge',
+        subtitle: 'Play and earn coins',
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const FoodMemoryChallengeApp(),
+          ),
+        ),
       ),
     ];
 
@@ -119,7 +128,9 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 14),
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -132,8 +143,11 @@ class ProfileScreen extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.arrow_back_ios_new_rounded,
-                              size: 16, color: Colors.white),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                       const Text(
@@ -152,8 +166,11 @@ class ProfileScreen extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.settings_outlined,
-                            color: Colors.white, size: 20),
+                        child: const Icon(
+                          Icons.settings_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ],
                   ),
@@ -185,8 +202,9 @@ class ProfileScreen extends StatelessWidget {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFFC88B1A)
-                                        .withValues(alpha: 0.4),
+                                    color: const Color(
+                                      0xFFC88B1A,
+                                    ).withValues(alpha: 0.4),
                                     blurRadius: 20,
                                     offset: const Offset(0, 6),
                                     spreadRadius: -4,
@@ -225,8 +243,11 @@ class ProfileScreen extends StatelessWidget {
                                   color: Color(0xFFC88B1A),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.edit,
-                                    color: Colors.white, size: 13),
+                                child: const Icon(
+                                  Icons.edit,
+                                  color: Colors.white,
+                                  size: 13,
+                                ),
                               ),
                             ),
                           ],
@@ -235,19 +256,19 @@ class ProfileScreen extends StatelessWidget {
 
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFFCD3AA),
-                                Color(0xFFFFE8CC),
-                              ],
+                              colors: [Color(0xFFFCD3AA), Color(0xFFFFE8CC)],
                             ),
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFC88B1A)
-                                    .withValues(alpha: 0.2),
+                                color: const Color(
+                                  0xFFC88B1A,
+                                ).withValues(alpha: 0.2),
                                 blurRadius: 8,
                                 offset: const Offset(0, 3),
                               ),
@@ -256,8 +277,11 @@ class ProfileScreen extends StatelessWidget {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.verified_rounded,
-                                  size: 14, color: Color(0xFF8B5A10)),
+                              Icon(
+                                Icons.verified_rounded,
+                                size: 14,
+                                color: Color(0xFF8B5A10),
+                              ),
                               SizedBox(width: 5),
                               Text(
                                 'GOLD MACARON MEMBER',
@@ -312,8 +336,9 @@ class ProfileScreen extends StatelessWidget {
                             borderRadius: BorderRadius.circular(28),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF0F2A1A)
-                                    .withValues(alpha: 0.4),
+                                color: const Color(
+                                  0xFF0F2A1A,
+                                ).withValues(alpha: 0.4),
                                 blurRadius: 24,
                                 offset: const Offset(0, 8),
                                 spreadRadius: -4,
@@ -338,14 +363,18 @@ class ProfileScreen extends StatelessWidget {
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 5),
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFC88B1A)
-                                          .withValues(alpha: 0.2),
+                                      color: const Color(
+                                        0xFFC88B1A,
+                                      ).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: const Color(0xFFC88B1A)
-                                            .withValues(alpha: 0.3),
+                                        color: const Color(
+                                          0xFFC88B1A,
+                                        ).withValues(alpha: 0.3),
                                       ),
                                     ),
                                     child: const Text(
@@ -362,18 +391,14 @@ class ProfileScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 12),
                               Row(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.baseline,
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
                                 textBaseline: TextBaseline.alphabetic,
                                 children: [
                                   Text(
-                                    loyaltyPoints
-                                        .toString()
-                                        .replaceAllMapped(
-                                          RegExp(
-                                              r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                                          (m) => '${m[1]},',
-                                        ),
+                                    loyaltyPoints.toString().replaceAllMapped(
+                                      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                                      (m) => '${m[1]},',
+                                    ),
                                     style: const TextStyle(
                                       fontSize: 52,
                                       fontWeight: FontWeight.w900,
@@ -456,8 +481,9 @@ class ProfileScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFC88B1A)
-                                          .withValues(alpha: 0.35),
+                                      color: const Color(
+                                        0xFFC88B1A,
+                                      ).withValues(alpha: 0.35),
                                       blurRadius: 12,
                                       offset: const Offset(0, 4),
                                     ),
@@ -514,13 +540,18 @@ class ProfileScreen extends StatelessWidget {
                               color: const Color(0xFFFFEDED),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                  color: const Color(0xFFFECACA), width: 1.5),
+                                color: const Color(0xFFFECACA),
+                                width: 1.5,
+                              ),
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.logout_rounded,
-                                    size: 18, color: Color(0xFFDC2626)),
+                                Icon(
+                                  Icons.logout_rounded,
+                                  size: 18,
+                                  color: Color(0xFFDC2626),
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   'Sign Out',
@@ -547,8 +578,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmSignOut(
-      BuildContext context, AuthProvider auth) async {
+  Future<void> _confirmSignOut(BuildContext context, AuthProvider auth) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
@@ -576,8 +606,11 @@ class ProfileScreen extends StatelessWidget {
                   color: Color(0xFFFEE2E2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.logout_rounded,
-                    color: Color(0xFFDC2626), size: 26),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Color(0xFFDC2626),
+                  size: 26,
+                ),
               ),
               const SizedBox(height: 18),
               const Text(
@@ -594,9 +627,10 @@ class ProfileScreen extends StatelessWidget {
                 'You will be signed out of Le Frais.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6A6865),
-                    height: 1.5),
+                  fontSize: 14,
+                  color: Color(0xFF6A6865),
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 24),
               Row(
@@ -611,10 +645,13 @@ class ProfileScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Center(
-                          child: Text('Cancel',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF3A3835))),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF3A3835),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -630,10 +667,13 @@ class ProfileScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Center(
-                          child: Text('Sign Out',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFDC2626))),
+                          child: Text(
+                            'Sign Out',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFDC2626),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -726,8 +766,11 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                color: Color(0xFFD0CEC9), size: 14),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Color(0xFFD0CEC9),
+              size: 14,
+            ),
           ],
         ),
       ),
