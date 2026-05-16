@@ -6,6 +6,7 @@ import '../../providers/order_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/delivery_provider.dart';
 import '../../providers/dine_in_provider.dart';
+import '../../providers/loyalty_provider.dart';
 import '../../services/api/order_service.dart';
 import '../../services/api/payment_service.dart';
 import '../../services/payment/razorpay_handler.dart';
@@ -75,15 +76,37 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     return cart.couponDiscount > 0 ? cart.couponDiscount : _discountAmount;
   }
 
+  /// Unit price of the cheapest item in the cart.
+  double get _cheapestItemPrice {
+    if (widget.items.isEmpty) return 0;
+    return widget.items.map((e) => e.price).reduce((a, b) => a < b ? a : b);
+  }
+
+  /// Name of the cheapest item in the cart.
+  String get _cheapestItemName {
+    if (widget.items.isEmpty) return '';
+    return widget.items
+        .reduce((a, b) => a.price <= b.price ? a : b)
+        .name;
+  }
+
+  /// Effective loyalty discount: the cheapest item price, if the customer has
+  /// enough points and loyalty is toggled on.
+  double get _effectiveLoyaltyDiscount {
+    final loyaltyProvider = context.read<LoyaltyProvider>();
+    final price = _cheapestItemPrice;
+    if (price <= 0) return 0;
+    if (loyaltyProvider.points < price.ceil()) return 0;
+    return price;
+  }
+
   double get _finalTotal {
     return widget.subtotal +
         widget.gst +
         widget.serviceCharge +
         _deliveryCharge -
         _couponDiscountAmount -
-        (widget.loyaltyDiscount > 0 && _loyaltyApplied
-            ? widget.loyaltyDiscount
-            : 0);
+        (_loyaltyApplied ? _effectiveLoyaltyDiscount : 0);
   }
 
   @override
@@ -100,6 +123,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     ).animate(CurvedAnimation(parent: _ctaController, curve: Curves.easeInOut));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PaymentProvider>().loadAvailableDiscounts();
+      context.read<LoyaltyProvider>().loadBalance();
     });
   }
 
@@ -215,6 +239,27 @@ class _CheckoutScreenState extends State<CheckoutScreen>
               : null);
       if (effectiveCode != null) {
         await _applyDiscount(orderId, effectiveCode);
+      }
+
+      // Redeem loyalty points if the customer toggled the loyalty banner on.
+      if (_loyaltyApplied && _effectiveLoyaltyDiscount > 0) {
+        if (!mounted) return;
+        final loyaltyProvider = context.read<LoyaltyProvider>();
+        final redeemed = await loyaltyProvider.redeemForCheapestItem(
+          widget.items,
+          orderId,
+        );
+        if (!redeemed && mounted) {
+          // Non-fatal — show a warning but continue with the order.
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                loyaltyProvider.error ?? 'Could not redeem loyalty points',
+              ),
+              backgroundColor: Colors.orange[700],
+            ),
+          );
+        }
       }
 
       // Initiate payment (skip for cash — handled at counter)
@@ -457,10 +502,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                     _sectionLabel('DISCOUNT CODE'),
                     _buildDiscountSection(),
 
-                    if (widget.loyaltyDiscount > 0) ...[
-                      _sectionLabel('REWARDS'),
-                      _buildLoyaltyBanner(),
-                    ],
+                    _sectionLabel('REWARDS'),
+                    _buildLoyaltyBanner(),
 
                     _sectionLabel('ORDER SUMMARY'),
                     _buildOrderSummary(deliveryEstimate),
@@ -981,6 +1024,142 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   }
 
   Widget _buildLoyaltyBanner() {
+    final loyaltyProvider = context.watch<LoyaltyProvider>();
+    final isLoading = loyaltyProvider.isLoading;
+    final pts = loyaltyProvider.points;
+    final discount = _effectiveLoyaltyDiscount;
+    final hasEnough = discount > 0;
+    final cheapestName = _cheapestItemName;
+
+    // If still loading show a subtle placeholder
+    if (isLoading) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE8E6E0), width: 1.5),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Loading loyalty points…',
+              style: TextStyle(fontSize: 13, color: Color(0xFF9A9690)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // No points and can't redeem — show an informational (non-interactive) tile
+    if (pts == 0 && !hasEnough) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE8E6E0), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0EFEB),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.card_giftcard_rounded,
+                size: 20,
+                color: Color(0xFF9A9690),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'No loyalty points yet',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1C1A17),
+                    ),
+                  ),
+                  const Text(
+                    'You earn 1 pt per ₹10 spent. Keep ordering!',
+                    style: TextStyle(fontSize: 11, color: Color(0xFF9A9690)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Has points but not enough for the cheapest item
+    if (!hasEnough && pts > 0) {
+      final needed = _cheapestItemPrice.ceil();
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE8E6E0), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8E1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.card_giftcard_rounded,
+                size: 20,
+                color: Color(0xFFC88B1A),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'You have $pts pt${pts == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF4A3000),
+                    ),
+                  ),
+                  Text(
+                    'Need $needed pt${needed == 1 ? '' : 's'} to redeem "$cheapestName" free',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF9A7020),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Enough points to redeem — interactive toggle
     return GestureDetector(
       onTap: () => setState(() => _loyaltyApplied = !_loyaltyApplied),
       child: AnimatedContainer(
@@ -1023,7 +1202,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                   Text(
                     _loyaltyApplied
                         ? 'Loyalty discount applied!'
-                        : 'Use your loyalty points',
+                        : 'Use $pts pt${pts == 1 ? '' : 's'} — get "$cheapestName" free',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -1034,8 +1213,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                   ),
                   Text(
                     _loyaltyApplied
-                        ? 'Saving ₹${widget.loyaltyDiscount.toStringAsFixed(0)} on this order'
-                        : 'Tap to redeem for ₹${widget.loyaltyDiscount.toStringAsFixed(0)} off',
+                        ? 'Saving ₹${discount.toStringAsFixed(0)} on this order'
+                        : 'Tap to redeem for ₹${discount.toStringAsFixed(0)} off',
                     style: TextStyle(
                       fontSize: 11,
                       color: _loyaltyApplied
@@ -1197,11 +1376,11 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                     isDiscount: true,
                   ),
                 ],
-                if (_loyaltyApplied && widget.loyaltyDiscount > 0) ...[
+                if (_loyaltyApplied && _effectiveLoyaltyDiscount > 0) ...[
                   const SizedBox(height: 8),
                   _billRow(
                     'Loyalty Points',
-                    '-₹${widget.loyaltyDiscount.toStringAsFixed(0)}',
+                    '-₹${_effectiveLoyaltyDiscount.toStringAsFixed(0)}',
                     isDiscount: true,
                   ),
                 ],

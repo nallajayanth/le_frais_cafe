@@ -6,6 +6,7 @@ import '../../models/cart_entry.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/dine_in_provider.dart';
 import 'dine_in_screen.dart';
+import '../menu/menu_screen.dart';
 
 class DineInQrScannerScreen extends StatefulWidget {
   const DineInQrScannerScreen({super.key});
@@ -34,6 +35,15 @@ class _DineInQrScannerScreenState extends State<DineInQrScannerScreen> {
     super.dispose();
   }
 
+  bool _isCafeQr(String value) {
+    try {
+      final uri = Uri.parse(value);
+      return uri.queryParameters['mode'] == 'select';
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _handleScan(String? value) async {
     if (_isProcessing || value == null || value.trim().isEmpty) return;
 
@@ -42,6 +52,19 @@ class _DineInQrScannerScreenState extends State<DineInQrScannerScreen> {
 
     setState(() => _isProcessing = true);
     await _controller.stop();
+
+    // Café entrance QR: shows Dine In / Take Away choice
+    if (_isCafeQr(value)) {
+      if (!mounted) return;
+      setState(() => _isProcessing = false);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const _OrderModeSelectionScreen(),
+          settings: const RouteSettings(name: '/order_mode'),
+        ),
+      );
+      return;
+    }
 
     final ok = await dineIn.validateAndSetTable(value);
 
@@ -329,6 +352,144 @@ class _ScannerError extends StatelessWidget {
           const SizedBox(height: 20),
           FilledButton(onPressed: onRetry, child: const Text('Try Again')),
         ],
+      ),
+    );
+  }
+}
+
+class _OrderModeSelectionScreen extends StatelessWidget {
+  const _OrderModeSelectionScreen();
+
+  static const Color _dark  = Color(0xFF0F2A1A);
+  static const Color _green = Color(0xFF1E5C3A);
+  static const Color _cream = Color(0xFFF4F2EC);
+  static const Color _gold  = Color(0xFFC88B1A);
+
+  void _select(BuildContext context, OrderMode mode) {
+    context.read<CartProvider>().updateOrderMode(mode);
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => const MenuScreen(),
+        settings: const RouteSettings(name: '/menu'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _dark,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  width: 42, height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 16),
+                ),
+              ),
+              const SizedBox(height: 40),
+              const Text(
+                'Welcome to\nLe Frais',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'Georgia',
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'How would you like to order?',
+                style: TextStyle(color: Colors.white60, fontSize: 15),
+              ),
+              const SizedBox(height: 48),
+              _ModeCard(
+                icon: Icons.restaurant_rounded,
+                title: 'Dine In',
+                subtitle: 'Order and enjoy at your table',
+                onTap: () => _select(context, OrderMode.dineIn),
+              ),
+              const SizedBox(height: 16),
+              _ModeCard(
+                icon: Icons.takeout_dining_rounded,
+                title: 'Take Away',
+                subtitle: 'Order now, collect when ready',
+                onTap: () => _select(context, OrderMode.pickup),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _ModeCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF1E5C3A),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Row(
+            children: [
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              const SizedBox(width: 18),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(subtitle,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
+            ],
+          ),
+        ),
       ),
     );
   }

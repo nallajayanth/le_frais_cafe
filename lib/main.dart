@@ -11,6 +11,7 @@ import 'providers/dine_in_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/review_provider.dart';
 import 'providers/support_provider.dart';
+import 'providers/loyalty_provider.dart';
 import 'services/api/api_client.dart';
 import 'services/api/menu_service.dart';
 import 'services/api/order_service.dart';
@@ -21,6 +22,7 @@ import 'services/api/dine_in_service.dart';
 import 'services/api/notification_service.dart';
 import 'services/api/review_service.dart';
 import 'services/api/support_service.dart';
+import 'services/api/loyalty_service.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/order/order_preference_screen.dart';
 
@@ -41,6 +43,7 @@ void main() async {
   final notificationService = NotificationService(apiClient: apiClient);
   final reviewService = ReviewService(apiClient: apiClient);
   final supportService = SupportService(apiClient: apiClient);
+  final loyaltyService = LoyaltyService(apiClient: apiClient);
 
   runApp(
     MultiProvider(
@@ -73,6 +76,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => SupportProvider(supportService: supportService),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => LoyaltyProvider(loyaltyService: loyaltyService),
         ),
       ],
       child: LeFraisApp(isLoggedIn: isLoggedIn),
