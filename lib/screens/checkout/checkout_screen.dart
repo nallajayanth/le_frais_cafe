@@ -8,6 +8,7 @@ import '../../providers/delivery_provider.dart';
 import '../../providers/dine_in_provider.dart';
 import '../../services/api/order_service.dart';
 import '../../services/api/payment_service.dart';
+import '../../services/payment/razorpay_handler.dart';
 import '../offers/coupons_sheet.dart';
 import '../order/payment_success_screen.dart';
 
@@ -53,6 +54,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   String? _discountError;
 
   bool _isPlacingOrder = false;
+  late final RazorpayHandler _razorpayHandler;
 
   static const Color _darkGreen = Color(0xFF0F2A1A);
   static const Color _accentGreen = Color(0xFF1E5C3A);
@@ -87,6 +89,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   @override
   void initState() {
     super.initState();
+    _razorpayHandler = RazorpayHandler();
     _ctaController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
@@ -102,6 +105,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
 
   @override
   void dispose() {
+    _razorpayHandler.dispose();
     _ctaController.dispose();
     _discountCtrl.dispose();
     super.dispose();
@@ -213,7 +217,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         await _applyDiscount(orderId, effectiveCode);
       }
 
-      // Initiate payment (skip for cash)
+      // Initiate payment (skip for cash — handled at counter)
       if (_selectedPayment != PaymentMethod.cash) {
         final payOk = await paymentProvider.initiatePayment(
           orderId: orderId,
@@ -221,26 +225,85 @@ class _CheckoutScreenState extends State<CheckoutScreen>
           paymentMethod: paymentMethodStr,
         );
 
-        if (!payOk) {
-          if (!mounted) return;
+        if (!payOk || !mounted) {
           setState(() => _isPlacingOrder = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Payment failed: ${paymentProvider.error}'),
-              backgroundColor: Colors.red[700],
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Payment initiation failed: ${paymentProvider.error}'),
+                backgroundColor: Colors.red[700],
+              ),
+            );
+          }
           return;
         }
-        if (!mounted) return;
 
-        final paymentId = paymentProvider.currentPayment?.paymentId ?? '';
+        final payment   = paymentProvider.currentPayment!;
+        final paymentId = payment.paymentId;
+        bool verifyOk   = false;
 
-        // Verify payment (mock mode auto-completes)
-        await paymentProvider.verifyPayment(
-          paymentId: paymentId,
-          transactionId: 'mock_${DateTime.now().millisecondsSinceEpoch}',
-        );
+        if (payment.gateway == 'razorpay' && payment.razorpayOrderId != null) {
+          // ── Razorpay native checkout ─────────────────────────────────────
+          final prefill = payment.razorpayPrefill;
+          final result  = await _razorpayHandler.open(
+            keyId:           payment.razorpayKeyId ?? '',
+            razorpayOrderId: payment.razorpayOrderId!,
+            amountPaise:     payment.razorpayAmountPaise,
+            currency:        payment.currency,
+            prefillName:     prefill['name']    as String?,
+            prefillEmail:    prefill['email']   as String?,
+            prefillContact:  prefill['contact'] as String?,
+          );
+
+          if (!mounted) return;
+
+          if (!result.success) {
+            setState(() => _isPlacingOrder = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result.errorMessage ?? 'Payment cancelled'),
+                backgroundColor: Colors.red[700],
+              ),
+            );
+            return;
+          }
+
+          verifyOk = await paymentProvider.verifyPayment(
+            paymentId:         paymentId,
+            razorpayPaymentId: result.paymentId,
+            razorpayOrderId:   result.orderId,
+            razorpaySignature: result.signature,
+          );
+
+        } else if (payment.gateway == 'stripe' && payment.stripeClientSecret != null) {
+          // ── Stripe: client handles PaymentSheet or CardField ─────────────
+          // The Stripe SDK is initialized on the frontend (see stripe_payment_screen.dart).
+          // For now we fall through to mock verify — wire up flutter_stripe here when ready.
+          verifyOk = await paymentProvider.verifyPayment(
+            paymentId:            paymentId,
+            stripePaymentIntentId: payment.stripeClientSecret!.split('_secret_').first,
+          );
+
+        } else {
+          // ── Mock / unknown gateway — auto-confirm ─────────────────────────
+          verifyOk = await paymentProvider.verifyPayment(
+            paymentId:     paymentId,
+            transactionId: 'mock_${DateTime.now().millisecondsSinceEpoch}',
+          );
+        }
+
+        if (!verifyOk || !mounted) {
+          setState(() => _isPlacingOrder = false);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(paymentProvider.error ?? 'Payment verification failed'),
+                backgroundColor: Colors.red[700],
+              ),
+            );
+          }
+          return;
+        }
       }
 
       if (!mounted) return;

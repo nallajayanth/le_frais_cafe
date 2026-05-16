@@ -24,16 +24,27 @@ class PaymentService {
     }
   }
 
-  /// Verify payment after completion
+  /// Verify payment after completion.
+  /// Supply the gateway-specific fields that match the active gateway:
+  ///   Razorpay → razorpayPaymentId + razorpayOrderId + razorpaySignature
+  ///   Stripe   → stripePaymentIntentId
+  ///   Mock     → transactionId (any string)
   Future<PaymentVerification> verifyPayment({
     required String paymentId,
-    required String transactionId,
+    String? transactionId,
+    String? razorpayPaymentId,
+    String? razorpayOrderId,
+    String? razorpaySignature,
+    String? stripePaymentIntentId,
   }) async {
     try {
-      final response = await apiClient.post('/payments/verify', {
-        'paymentId': paymentId,
-        'transactionId': transactionId,
-      });
+      final body = <String, dynamic>{'paymentId': paymentId};
+      if (razorpayPaymentId != null) body['razorpayPaymentId']   = razorpayPaymentId;
+      if (razorpayOrderId   != null) body['razorpayOrderId']     = razorpayOrderId;
+      if (razorpaySignature != null) body['razorpaySignature']   = razorpaySignature;
+      if (stripePaymentIntentId != null) body['stripePaymentIntentId'] = stripePaymentIntentId;
+      if (transactionId     != null) body['transactionId']       = transactionId;
+      final response = await apiClient.post('/payments/verify', body);
       return PaymentVerification.fromJson(
         response['data'] as Map<String, dynamic>,
       );
@@ -119,34 +130,52 @@ class PaymentResponse {
   final String paymentId;
   final String orderId;
   final double amount;
+  final String currency;
   final String paymentMethod;
   final String status;
   final DateTime createdAt;
+  final String gateway; // 'razorpay' | 'stripe' | 'mock' | 'cash'
+  final Map<String, dynamic> gatewayData;
   final String? redirectUrl;
 
   PaymentResponse({
     required this.paymentId,
     required this.orderId,
     required this.amount,
+    this.currency = 'INR',
     required this.paymentMethod,
     required this.status,
     required this.createdAt,
+    this.gateway = 'mock',
+    this.gatewayData = const {},
     this.redirectUrl,
   });
 
   factory PaymentResponse.fromJson(Map<String, dynamic> json) {
     return PaymentResponse(
-      paymentId: json['_id'] ?? json['paymentId'] ?? '',
-      orderId: json['orderId'] ?? '',
-      amount: (json['amount'] ?? 0).toDouble(),
+      paymentId:     json['paymentId'] ?? json['_id'] ?? '',
+      orderId:       json['orderId'] ?? '',
+      amount:        (json['amount'] ?? 0).toDouble(),
+      currency:      json['currency'] ?? 'INR',
       paymentMethod: json['paymentMethod'] ?? '',
-      status: json['status'] ?? 'PENDING',
-      createdAt: DateTime.parse(
-        json['createdAt'] ?? DateTime.now().toIso8601String(),
-      ),
-      redirectUrl: json['redirectUrl'],
+      status:        json['status'] ?? 'PENDING',
+      createdAt:     DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      gateway:       json['gateway'] ?? 'mock',
+      gatewayData:   (json['gatewayData'] as Map<String, dynamic>?) ?? {},
+      redirectUrl:   json['redirectUrl'],
     );
   }
+
+  // Razorpay convenience getters
+  String? get razorpayOrderId    => gatewayData['razorpayOrderId'] as String?;
+  String? get razorpayKeyId      => gatewayData['keyId'] as String?;
+  int     get razorpayAmountPaise => (gatewayData['amount'] as num?)?.toInt() ?? amount.toInt();
+  Map<String, dynamic> get razorpayPrefill =>
+      (gatewayData['prefill'] as Map<String, dynamic>?) ?? {};
+
+  // Stripe convenience getters
+  String? get stripeClientSecret   => gatewayData['clientSecret'] as String?;
+  String? get stripePublishableKey => gatewayData['publishableKey'] as String?;
 }
 
 /// Payment Verification Model

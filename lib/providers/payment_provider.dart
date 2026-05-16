@@ -53,10 +53,14 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
-  /// Verify payment
+  /// Verify payment — gateway-specific fields are forwarded to the backend.
   Future<bool> verifyPayment({
     required String paymentId,
-    required String transactionId,
+    String? transactionId,
+    String? razorpayPaymentId,
+    String? razorpayOrderId,
+    String? razorpaySignature,
+    String? stripePaymentIntentId,
   }) async {
     _isLoading = true;
     _error = null;
@@ -64,8 +68,12 @@ class PaymentProvider extends ChangeNotifier {
 
     try {
       final verification = await paymentService.verifyPayment(
-        paymentId: paymentId,
-        transactionId: transactionId,
+        paymentId:             paymentId,
+        transactionId:         transactionId,
+        razorpayPaymentId:     razorpayPaymentId,
+        razorpayOrderId:       razorpayOrderId,
+        razorpaySignature:     razorpaySignature,
+        stripePaymentIntentId: stripePaymentIntentId,
       );
 
       if (verification.isSuccess) {
