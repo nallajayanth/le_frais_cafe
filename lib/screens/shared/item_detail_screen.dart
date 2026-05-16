@@ -232,8 +232,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double rating = widget.rating ?? 4.7;
-    final int reviewCount = widget.ratingCount ?? 238;
+    final double rating = widget.rating ?? 0.0;
+    final int reviewCount = widget.ratingCount ?? 0;
     final String price = '₹${widget.price.toStringAsFixed(0)}';
     final desc = widget.description;
     final bool longDesc = desc.length > 90;

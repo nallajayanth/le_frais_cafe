@@ -118,7 +118,7 @@ class ItemReview {
   });
 
   factory ItemReview.fromJson(Map<String, dynamic> json) {
-    String name = json['customerName'] ?? json['customer_name'] ?? '';
+    String name = json['reviewerName'] ?? json['customerName'] ?? json['customer_name'] ?? '';
     if (name.isEmpty) {
       final first = (json['reviewerFirstName'] ?? json['firstName'] ?? json['first_name'] ?? '') as String;
       final last = (json['lastName'] ?? json['last_name'] ?? '') as String;

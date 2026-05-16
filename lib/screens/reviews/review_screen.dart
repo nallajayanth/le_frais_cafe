@@ -48,6 +48,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
       return;
     }
 
+    if (widget.order.items.length > 1 && _selectedItemId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select the item you are reviewing')),
+      );
+      return;
+    }
+
     final provider = context.read<ReviewProvider>();
     final ok = await provider.submitReview(
       orderId: widget.order.id,
@@ -247,27 +254,38 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Optional: select item
-                    if (widget.order.items.isNotEmpty) ...[
-                      const Text(
-                        'Rate a specific item (optional)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6A6865),
-                          letterSpacing: 0.5,
-                        ),
+                    // Item selector: hidden for single-item orders (auto-selected), required for multi-item orders
+                    if (widget.order.items.length > 1) ...[
+                      Row(
+                        children: [
+                          const Text(
+                            'Select item to review',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF6A6865),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '(required)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.red[400],
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: [
-                          _itemChip(null, 'Overall'),
-                          ...widget.order.items.map(
-                            (item) => _itemChip(item.itemId, item.name),
-                          ),
-                        ],
+                        children: widget.order.items
+                            .map((item) => _itemChip(item.itemId, item.name))
+                            .toList(),
                       ),
                       const SizedBox(height: 24),
                     ],
