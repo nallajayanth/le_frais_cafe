@@ -10,7 +10,7 @@ class PaymentService {
   Future<PaymentResponse> initiatePayment({
     required String orderId,
     required double amount,
-    required String paymentMethod, // upi, card, netbanking, cash
+    required String paymentMethod,
   }) async {
     try {
       final response = await apiClient.post('/payments/initiate', {
@@ -18,7 +18,6 @@ class PaymentService {
         'amount': amount,
         'paymentMethod': paymentMethod,
       });
-
       return PaymentResponse.fromJson(response['data'] as Map<String, dynamic>);
     } on ApiException catch (e) {
       throw PaymentException(e.message);
@@ -35,7 +34,6 @@ class PaymentService {
         'paymentId': paymentId,
         'transactionId': transactionId,
       });
-
       return PaymentVerification.fromJson(
         response['data'] as Map<String, dynamic>,
       );
@@ -54,7 +52,7 @@ class PaymentService {
     }
   }
 
-  /// Apply discount code
+  /// Apply discount code to an existing order
   Future<DiscountResponse> applyDiscount({
     required String orderId,
     required String discountCode,
@@ -63,10 +61,26 @@ class PaymentService {
       final response = await apiClient.post('/orders/$orderId/apply-discount', {
         'discountCode': discountCode,
       });
-
       return DiscountResponse.fromJson(
         response['data'] as Map<String, dynamic>,
       );
+    } on ApiException catch (e) {
+      throw PaymentException(e.message);
+    }
+  }
+
+  /// Validate a discount code for a given subtotal (public, no order needed)
+  Future<DiscountValidation> validateDiscount({
+    required String code,
+    required double subtotal,
+  }) async {
+    try {
+      final response = await apiClient.post(
+        '/discounts/validate',
+        {'code': code, 'subtotal': subtotal},
+        requiresAuth: false,
+      );
+      return DiscountValidation.fromJson(response);
     } on ApiException catch (e) {
       throw PaymentException(e.message);
     }
@@ -139,7 +153,7 @@ class PaymentResponse {
 class PaymentVerification {
   final String paymentId;
   final String orderId;
-  final String status; // SUCCESS, FAILED, PENDING
+  final String status;
   final String message;
 
   PaymentVerification({
@@ -166,7 +180,7 @@ class PaymentVerification {
 /// Payment Status Model
 class PaymentStatus {
   final String paymentId;
-  final String status; // PENDING, COMPLETED, FAILED, CANCELLED
+  final String status;
   final DateTime lastUpdated;
 
   PaymentStatus({
@@ -192,12 +206,15 @@ class DiscountCode {
   final String code;
   final String description;
   final String discountType; // 'percentage' or 'flat'
-  final double discountValue; // percentage number OR flat rupee amount
-  final double discountPercentage; // kept for backward compat
+  final double discountValue;
+  final double discountPercentage;
   final double maxDiscount;
   final double minOrderValue;
   final bool isActive;
-  final DateTime? validTill; // null means no expiry
+  final DateTime? validFrom;
+  final DateTime? validTill;
+  final int maxUsage;
+  final int usageCount;
 
   DiscountCode({
     required this.id,
@@ -209,7 +226,10 @@ class DiscountCode {
     required this.maxDiscount,
     required this.minOrderValue,
     required this.isActive,
+    this.validFrom,
     this.validTill,
+    this.maxUsage = 0,
+    this.usageCount = 0,
   });
 
   factory DiscountCode.fromJson(Map<String, dynamic> json) {
@@ -225,17 +245,31 @@ class DiscountCode {
       maxDiscount: (json['maxDiscount'] ?? 0).toDouble(),
       minOrderValue: (json['minOrderValue'] ?? 0).toDouble(),
       isActive: json['isActive'] ?? true,
+      validFrom: json['validFrom'] != null
+          ? DateTime.tryParse(json['validFrom'] as String)
+          : null,
       validTill: json['validTill'] != null
           ? DateTime.tryParse(json['validTill'] as String)
           : null,
+      maxUsage: (json['maxUsage'] ?? 0) is int
+          ? (json['maxUsage'] ?? 0)
+          : int.tryParse(json['maxUsage'].toString()) ?? 0,
+      usageCount: (json['usageCount'] ?? 0) is int
+          ? (json['usageCount'] ?? 0)
+          : int.tryParse(json['usageCount'].toString()) ?? 0,
     );
   }
 
   bool get isValid =>
       isActive && (validTill == null || DateTime.now().isBefore(validTill!));
 
-  /// Calculate how much discount to apply for a given subtotal (in rupees).
+  bool get hasUsageLimit => maxUsage > 0;
+  bool get isExhausted => hasUsageLimit && usageCount >= maxUsage;
+  int get remainingUses => hasUsageLimit ? (maxUsage - usageCount) : 9999;
+
+  /// Calculate how much discount to apply for a given subtotal.
   double calculateDiscount(double subtotal) {
+    if (subtotal < minOrderValue) return 0;
     double amount;
     if (discountType == 'flat') {
       amount = discountValue;
@@ -248,12 +282,66 @@ class DiscountCode {
     return amount.floorToDouble();
   }
 
+  /// Amount needed to unlock this coupon from [currentSubtotal].
+  double amountNeeded(double currentSubtotal) {
+    if (currentSubtotal >= minOrderValue) return 0;
+    return (minOrderValue - currentSubtotal).ceilToDouble();
+  }
+
   String get displayValue => discountType == 'flat'
       ? '₹${discountValue.toStringAsFixed(0)} OFF'
       : '${discountValue.toStringAsFixed(0)}% OFF';
+
+  String get shortDescription {
+    if (discountType == 'flat') {
+      return '₹${discountValue.toStringAsFixed(0)} off on your order';
+    } else {
+      final suffix = maxDiscount > 0 ? ' up to ₹${maxDiscount.toStringAsFixed(0)}' : '';
+      return '${discountValue.toStringAsFixed(0)}% off$suffix';
+    }
+  }
+
+  String? get validTillFormatted {
+    if (validTill == null) return null;
+    final d = validTill!;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${d.day} ${months[d.month - 1]} ${d.year}';
+  }
 }
 
-/// Discount Response Model
+/// Discount Validation Response (from POST /discounts/validate)
+class DiscountValidation {
+  final bool valid;
+  final bool canApply;
+  final double discountAmount;
+  final double amountNeeded;
+  final String? message;
+  final DiscountCode? discount;
+
+  DiscountValidation({
+    required this.valid,
+    required this.canApply,
+    required this.discountAmount,
+    required this.amountNeeded,
+    this.message,
+    this.discount,
+  });
+
+  factory DiscountValidation.fromJson(Map<String, dynamic> json) {
+    return DiscountValidation(
+      valid: json['valid'] ?? false,
+      canApply: json['canApply'] ?? false,
+      discountAmount: (json['discountAmount'] ?? 0).toDouble(),
+      amountNeeded: (json['amountNeeded'] ?? 0).toDouble(),
+      message: json['message']?.toString(),
+      discount: json['discount'] != null
+          ? DiscountCode.fromJson(json['discount'] as Map<String, dynamic>)
+          : null,
+    );
+  }
+}
+
+/// Discount Response Model (from apply-discount)
 class DiscountResponse {
   final double discountAmount;
   final double newTotal;

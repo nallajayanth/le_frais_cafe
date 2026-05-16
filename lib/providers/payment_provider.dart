@@ -166,6 +166,28 @@ class PaymentProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Validate a discount code client-side against loaded discounts
+  /// Returns the matching DiscountCode or null if not found/invalid.
+  DiscountCode? findDiscount(String code) {
+    final upper = code.trim().toUpperCase();
+    return _availableDiscounts.where((d) => d.code == upper && d.isValid).firstOrNull;
+  }
+
+  /// Server-side validate: checks code + subtotal, returns DiscountValidation.
+  Future<DiscountValidation?> validateDiscount({
+    required String code,
+    required double subtotal,
+  }) async {
+    try {
+      return await paymentService.validateDiscount(
+        code: code,
+        subtotal: subtotal,
+      );
+    } on PaymentException {
+      return null;
+    }
+  }
+
   /// Clear error
   void clearError() {
     _error = null;

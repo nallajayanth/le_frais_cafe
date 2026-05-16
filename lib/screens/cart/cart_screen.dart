@@ -4,11 +4,12 @@ import '../../models/delivery_address.dart';
 import '../../services/address_service.dart';
 import '../address/address_picker_sheet.dart';
 import '../checkout/checkout_screen.dart';
-
+import '../offers/coupons_sheet.dart';
 import '../profile/profile_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/dine_in_provider.dart';
+import '../../providers/payment_provider.dart';
 import '../shared/custom_bottom_nav_bar.dart';
 
 // ── "You might also like" suggestion ─────────────────────────────────────────
@@ -77,7 +78,6 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-load selected delivery address if mode is delivery
     Future.microtask(() {
       final orderMode = context.read<CartProvider>().orderMode;
       if (orderMode == OrderMode.delivery) {
@@ -85,6 +85,8 @@ class _CartScreenState extends State<CartScreen> {
           _deliveryAddress = AddressService().selectedAddress;
         });
       }
+      // Pre-load discounts so the coupon sheet opens instantly
+      context.read<PaymentProvider>().loadAvailableDiscounts();
     });
   }
 
@@ -97,6 +99,7 @@ class _CartScreenState extends State<CartScreen> {
       cart.subtotal +
       _gst(cart) +
       _serviceCharge -
+      cart.couponDiscount -
       (_useLoyalty ? _loyaltyDiscount : 0);
 
   // ── Order mode banner data ────────────────────────────────────────────────
@@ -952,6 +955,11 @@ class _CartScreenState extends State<CartScreen> {
 
                     const SizedBox(height: 20),
 
+                    // ── Coupon / offers row ────────────────────────────────
+                    _buildCouponRow(cart),
+
+                    const SizedBox(height: 20),
+
                     // ── Loyalty points toggle ──────────────────────────────
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -1069,6 +1077,12 @@ class _CartScreenState extends State<CartScreen> {
                             _summaryRowDark('Subtotal', _subtotal(cart)),
                             _summaryRowDark('GST (5%)', _gst(cart)),
                             _summaryRowDark('Service charge', _serviceCharge),
+                            if (cart.couponDiscount > 0)
+                              _summaryRowDark(
+                                'Coupon (${cart.appliedCoupon!.code})',
+                                -cart.couponDiscount,
+                                isDiscount: true,
+                              ),
                             if (_useLoyalty)
                               _summaryRowDark(
                                 'Loyalty discount',
@@ -1199,6 +1213,133 @@ class _CartScreenState extends State<CartScreen> {
 
             // ── Bottom Navigation ───────────────────────────────────────────
             const CustomBottomNavBar(activeIndex: 3),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Coupon row ────────────────────────────────────────────────────────────
+  Widget _buildCouponRow(CartProvider cart) {
+    final appliedCoupon = cart.appliedCoupon;
+    final discount = cart.couponDiscount;
+    final paymentProvider = context.watch<PaymentProvider>();
+    final offersCount = paymentProvider.availableDiscounts.length;
+
+    return GestureDetector(
+      onTap: () => CouponsSheet.show(context),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: appliedCoupon != null
+              ? const Color(0xFFEAF5EF)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: appliedCoupon != null
+                ? _accentGreen.withValues(alpha: 0.35)
+                : const Color(0xFFE8E5DF),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: appliedCoupon != null
+                  ? _accentGreen.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: appliedCoupon != null
+                    ? _accentGreen
+                    : const Color(0xFFF0EFEB),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                appliedCoupon != null
+                    ? Icons.check_rounded
+                    : Icons.local_offer_rounded,
+                size: 18,
+                color: appliedCoupon != null
+                    ? Colors.white
+                    : const Color(0xFF9A9690),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: appliedCoupon != null
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${appliedCoupon.code} applied',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: _accentGreen,
+                          ),
+                        ),
+                        Text(
+                          'Saving ₹${discount.toStringAsFixed(0)} on this order',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF3D8A5A),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Apply Coupon',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1C1A17),
+                          ),
+                        ),
+                        Text(
+                          offersCount > 0
+                              ? '$offersCount offer${offersCount == 1 ? '' : 's'} available'
+                              : 'Enter promo code',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF9A9690),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+            if (appliedCoupon != null)
+              GestureDetector(
+                onTap: () {
+                  cart.removeCoupon();
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: _accentGreen.withValues(alpha: 0.7),
+                  ),
+                ),
+              )
+            else
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: Color(0xFFCECCC8),
+                size: 22,
+              ),
           ],
         ),
       ),

@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_entry.dart';
+import '../services/api/payment_service.dart';
 
 class CartProvider extends ChangeNotifier {
   List<CartEntry> _items = [];
   OrderMode _orderMode = OrderMode.dineIn;
+  DiscountCode? _appliedCoupon;
 
   List<CartEntry> get items => List.unmodifiable(_items);
   OrderMode get orderMode => _orderMode;
@@ -14,6 +16,12 @@ class CartProvider extends ChangeNotifier {
   bool get isNotEmpty => _items.isNotEmpty;
   int get totalItems => _items.fold(0, (sum, item) => sum + item.qty);
   double get subtotal => _items.fold(0, (sum, item) => sum + (item.price * item.qty));
+
+  DiscountCode? get appliedCoupon => _appliedCoupon;
+  double get couponDiscount {
+    if (_appliedCoupon == null) return 0;
+    return _appliedCoupon!.calculateDiscount(subtotal);
+  }
 
   static const String _cartPrefKey = 'le_frais_cart_items';
   static const String _orderModePrefKey = 'le_frais_order_mode';
@@ -37,15 +45,12 @@ class CartProvider extends ChangeNotifier {
     } else {
       _items.add(entry);
     }
+    // Re-validate coupon whenever cart changes
+    _revalidateCoupon();
     _saveToPrefs();
     notifyListeners();
   }
 
-  /// Sets (not increments) the quantity for an item that matches [entry] by
-  /// isSameItem equality. If a match exists its qty is replaced; if not the
-  /// entry is inserted. Qty ≤ 0 removes the existing entry.
-  /// Use this from ItemDetailScreen so tapping "Add to Cart" reflects the
-  /// exact stepper value rather than stacking on top of the old cart qty.
   void setItem(CartEntry entry) {
     final index = _items.indexWhere((e) => e.isSameItem(entry));
     if (index >= 0) {
@@ -57,6 +62,7 @@ class CartProvider extends ChangeNotifier {
     } else if (entry.qty > 0) {
       _items.add(entry);
     }
+    _revalidateCoupon();
     _saveToPrefs();
     notifyListeners();
   }
@@ -73,12 +79,14 @@ class CartProvider extends ChangeNotifier {
 
   void removeItemAt(int index) {
     _items.removeAt(index);
+    _revalidateCoupon();
     _saveToPrefs();
     notifyListeners();
   }
 
   void incrementQuantity(int index) {
     _items[index].qty++;
+    _revalidateCoupon();
     _saveToPrefs();
     notifyListeners();
   }
@@ -89,42 +97,55 @@ class CartProvider extends ChangeNotifier {
     } else {
       _items.removeAt(index);
     }
+    _revalidateCoupon();
     _saveToPrefs();
     notifyListeners();
   }
 
+  void applyCoupon(DiscountCode coupon) {
+    _appliedCoupon = coupon;
+    notifyListeners();
+  }
+
+  void removeCoupon() {
+    _appliedCoupon = null;
+    notifyListeners();
+  }
+
+  // Remove coupon if subtotal drops below its minimum order value
+  void _revalidateCoupon() {
+    if (_appliedCoupon != null) {
+      if (subtotal < _appliedCoupon!.minOrderValue) {
+        _appliedCoupon = null;
+      }
+    }
+  }
+
   void clear() {
     _items.clear();
+    _appliedCoupon = null;
     _saveToPrefs();
     notifyListeners();
   }
 
   Future<void> _saveToPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Save items
     final itemsJson = _items.map((e) => e.toJson()).toList();
     await prefs.setString(_cartPrefKey, jsonEncode(itemsJson));
-    
-    // Save order mode
     await prefs.setString(_orderModePrefKey, _orderMode.name);
   }
 
   Future<void> _loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Load items
     final itemsString = prefs.getString(_cartPrefKey);
     if (itemsString != null) {
       try {
         final List<dynamic> decodedList = jsonDecode(itemsString);
         _items = decodedList.map((e) => CartEntry.fromJson(e as Map<String, dynamic>)).toList();
       } catch (e) {
-        _items = []; // Fallback on error
+        _items = [];
       }
     }
-
-    // Load order mode
     final modeString = prefs.getString(_orderModePrefKey);
     if (modeString != null) {
       _orderMode = OrderMode.values.firstWhere(
@@ -132,7 +153,6 @@ class CartProvider extends ChangeNotifier {
         orElse: () => OrderMode.dineIn,
       );
     }
-
     notifyListeners();
   }
 }
