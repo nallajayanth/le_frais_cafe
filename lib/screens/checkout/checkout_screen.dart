@@ -4,6 +4,7 @@ import '../../models/cart_entry.dart';
 import '../../providers/order_provider.dart';
 import '../../providers/payment_provider.dart';
 import '../../providers/delivery_provider.dart';
+import '../../providers/dine_in_provider.dart';
 import '../../services/api/order_service.dart';
 import '../../services/api/payment_service.dart';
 import '../order/payment_success_screen.dart';
@@ -70,7 +71,9 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         widget.serviceCharge +
         _deliveryCharge -
         _discountAmount -
-        (widget.loyaltyDiscount > 0 && _loyaltyApplied ? widget.loyaltyDiscount : 0);
+        (widget.loyaltyDiscount > 0 && _loyaltyApplied
+            ? widget.loyaltyDiscount
+            : 0);
   }
 
   @override
@@ -80,9 +83,10 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    _ctaScale = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _ctaController, curve: Curves.easeInOut),
-    );
+    _ctaScale = Tween<double>(
+      begin: 1.0,
+      end: 0.97,
+    ).animate(CurvedAnimation(parent: _ctaController, curve: Curves.easeInOut));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PaymentProvider>().loadAvailableDiscounts();
     });
@@ -200,14 +204,29 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       final orderProvider = context.read<OrderProvider>();
       final paymentProvider = context.read<PaymentProvider>();
       final deliveryProvider = context.read<DeliveryProvider>();
+      final dineInProvider = context.read<DineInProvider>();
+      final dineInTable = dineInProvider.currentTable;
+
+      if (widget.orderMode == OrderMode.dineIn && dineInTable == null) {
+        setState(() => _isPlacingOrder = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please scan your table QR code first.'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+        return;
+      }
 
       final orderItems = widget.items
-          .map((item) => OrderItem(
-                itemId: item.itemId ?? item.name.hashCode.abs().toString(),
-                name: item.name,
-                quantity: item.qty,
-                price: item.price,
-              ))
+          .map(
+            (item) => OrderItem(
+              itemId: item.itemId ?? item.name.hashCode.abs().toString(),
+              name: item.name,
+              quantity: item.qty,
+              price: item.price,
+            ),
+          )
           .toList();
 
       // Map payment method
@@ -218,14 +237,17 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         PaymentMethod.cash => 'CASH',
       };
 
-      final orderId = await orderProvider.createOrder(
+      final orderResult = await orderProvider.createOrder(
         orderType: _getOrderTypeString(widget.orderMode),
         items: orderItems,
-        tableNumber: widget.tableNumber,
+        tableId: dineInTable?.id,
+        tableNumber: dineInTable?.tableName ?? widget.tableNumber,
         deliveryAddressId: deliveryProvider.selectedAddress?.id,
         // Discount is applied via apply-discount API below to avoid double-counting.
         paymentMethod: paymentMethodStr,
       );
+      final orderId = orderResult.orderId;
+      final orderNumber = orderResult.orderNumber;
 
       if (orderId == null) {
         if (!mounted) return;
@@ -278,7 +300,10 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => PaymentSuccessScreen(orderId: orderId),
+          builder: (_) => PaymentSuccessScreen(
+            orderId: orderId,
+            orderNumber: orderNumber,
+          ),
         ),
       );
     } catch (e) {
@@ -297,11 +322,11 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   String _getOrderTypeString(OrderMode mode) {
     switch (mode) {
       case OrderMode.dineIn:
-        return 'Dine In';
+        return 'dine_in';
       case OrderMode.pickup:
-        return 'Pickup';
+        return 'pickup';
       case OrderMode.delivery:
-        return 'Delivery';
+        return 'delivery';
     }
   }
 
@@ -410,8 +435,12 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                     _buildPaymentTile(
                       value: PaymentMethod.cash,
                       icon: Icons.payments_rounded,
-                      title: 'Cash on Delivery',
-                      subtitle: 'Pay when you receive',
+                      title: widget.orderMode == OrderMode.dineIn
+                          ? 'Pay At Counter'
+                          : 'Cash on Delivery',
+                      subtitle: widget.orderMode == OrderMode.dineIn
+                          ? 'Settle after your meal'
+                          : 'Pay when you receive',
                       iconBg: const Color(0xFFF0FDF4),
                       iconColor: const Color(0xFF22C55E),
                     ),
@@ -498,7 +527,9 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                                   Container(
                                     padding: const EdgeInsets.all(5),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: const Icon(
@@ -592,6 +623,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   }
 
   Widget _buildServiceCard(dynamic deliveryEstimate) {
+    final dineInTable = context.watch<DineInProvider>().currentTable;
     IconData icon;
     String title;
     String subtitle;
@@ -601,9 +633,13 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     switch (widget.orderMode) {
       case OrderMode.dineIn:
         icon = Icons.restaurant_rounded;
-        title = widget.tableNumber != null ? 'Table ${widget.tableNumber}' : 'Dine In';
-        subtitle = 'Le Frais Restaurant';
-        statusLabel = 'IMMEDIATE SERVICE';
+        title = dineInTable?.tableName ?? widget.tableNumber ?? 'Dine In';
+        subtitle = dineInTable == null
+            ? 'Scan table QR before placing order'
+            : 'Le Frais Restaurant';
+        statusLabel = dineInTable == null
+            ? 'TABLE REQUIRED'
+            : 'IMMEDIATE SERVICE';
         iconBg = const Color(0xFFE9F5EC);
         break;
       case OrderMode.pickup:
@@ -667,13 +703,19 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                 const SizedBox(height: 3),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF8A8884)),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF8A8884),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE9F5EC),
                     borderRadius: BorderRadius.circular(8),
@@ -792,7 +834,11 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 13)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    )
                   : null,
             ),
           ],
@@ -802,8 +848,9 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   }
 
   Widget _buildDiscountSection() {
-    final availableDiscounts =
-        context.watch<PaymentProvider>().availableDiscounts;
+    final availableDiscounts = context
+        .watch<PaymentProvider>()
+        .availableDiscounts;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -826,9 +873,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
               decoration: BoxDecoration(
                 color: const Color(0xFFE9F5EC),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _accentGreen.withValues(alpha: 0.3),
-                ),
+                border: Border.all(color: _accentGreen.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -898,8 +943,10 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
-                        borderSide:
-                            const BorderSide(color: _accentGreen, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: _accentGreen,
+                          width: 1.5,
+                        ),
                       ),
                       errorText: _discountError,
                     ),
@@ -978,9 +1025,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         decoration: BoxDecoration(
           color: const Color(0xFFF0F9F4),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: _accentGreen.withValues(alpha: 0.25),
-          ),
+          border: Border.all(color: _accentGreen.withValues(alpha: 0.25)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1103,7 +1148,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   }
 
   Widget _buildOrderSummary(dynamic deliveryEstimate) {
-    final deliveryCharge = widget.orderMode == OrderMode.delivery && deliveryEstimate != null
+    final deliveryCharge =
+        widget.orderMode == OrderMode.delivery && deliveryEstimate != null
         ? deliveryEstimate.deliveryCharge as double
         : 0.0;
 
@@ -1187,7 +1233,10 @@ class _CheckoutScreenState extends State<CheckoutScreen>
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            child: Divider(color: Colors.white.withValues(alpha: 0.1), height: 1),
+            child: Divider(
+              color: Colors.white.withValues(alpha: 0.1),
+              height: 1,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -1195,10 +1244,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
               children: [
                 _billRow('Subtotal', '₹${widget.subtotal.toStringAsFixed(0)}'),
                 const SizedBox(height: 8),
-                _billRow(
-                  'GST (5%)',
-                  '₹${widget.gst.toStringAsFixed(0)}',
-                ),
+                _billRow('GST (5%)', '₹${widget.gst.toStringAsFixed(0)}'),
                 if (widget.serviceCharge > 0) ...[
                   const SizedBox(height: 8),
                   _billRow(

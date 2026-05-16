@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../dine_in/dine_in_screen.dart';
+import '../dine_in/qr_scanner_screen.dart';
 import '../pickup/pickup_screen.dart';
 import '../delivery/delivery_screen.dart';
 import 'package:provider/provider.dart';
@@ -330,8 +330,8 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen>
     } else if (_selectedPreference == OrderMode.dineIn) {
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => const DineInScreen(),
-          settings: const RouteSettings(name: '/dine_in'),
+          builder: (_) => const DineInQrScannerScreen(),
+          settings: const RouteSettings(name: '/dine_in_scan'),
         ),
       );
     } else {
@@ -461,129 +461,131 @@ class _OrderPreferenceScreenState extends State<OrderPreferenceScreen>
                 final firstName = auth.currentUser?.firstName;
                 final greeting = _getTimeGreeting();
                 return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Greeting
-                const SizedBox(height: 4),
-                Text(
-                  greeting,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF8A7D6A),
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  firstName != null && firstName.isNotEmpty
-                      ? 'Hi, $firstName!\nHow would you order?'
-                      : 'How would you\nlike to order?',
-                  style: const TextStyle(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Georgia',
-                    color: Color(0xFF0F2A1A),
-                    height: 1.15,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Select your dining preference to continue.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF7A7670),
-                    height: 1.5,
-                  ),
-                ),
-
-                const SizedBox(height: 28),
-
-                // Order mode cards
-                ..._options.map(_buildOptionCard),
-
-                const SizedBox(height: 20),
-
-                // Hero image banner
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Stack(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        height: 180,
-                        decoration: const BoxDecoration(
-                          image: DecorationImage(
-                            image: NetworkImage(
-                              'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=1000&auto=format&fit=crop',
-                            ),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Greeting
+                    const SizedBox(height: 4),
+                    Text(
+                      greeting,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF8A7D6A),
+                        letterSpacing: 0.2,
                       ),
-                      Container(
-                        width: double.infinity,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              const Color(0xFF071410).withValues(alpha: 0.92),
-                            ],
-                            stops: const [0.2, 1.0],
-                          ),
-                        ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      firstName != null && firstName.isNotEmpty
+                          ? 'Hi, $firstName!\nHow would you order?'
+                          : 'How would you\nlike to order?',
+                      style: const TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Georgia',
+                        color: Color(0xFF0F2A1A),
+                        height: 1.15,
+                        letterSpacing: -0.5,
                       ),
-                      Positioned(
-                        bottom: 24,
-                        left: 24,
-                        right: 24,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFC88B1A,
-                                ).withValues(alpha: 0.9),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text(
-                                'THE CRAFT',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.8,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Select your dining preference to continue.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF7A7670),
+                        height: 1.5,
+                      ),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // Order mode cards
+                    ..._options.map(_buildOptionCard),
+
+                    const SizedBox(height: 20),
+
+                    // Hero image banner
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(28),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: 180,
+                            decoration: const BoxDecoration(
+                              image: DecorationImage(
+                                image: NetworkImage(
+                                  'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=1000&auto=format&fit=crop',
                                 ),
+                                fit: BoxFit.cover,
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              'Baked fresh daily\nin our forest atelier.',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 19,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'Georgia',
-                                height: 1.25,
+                          ),
+                          Container(
+                            width: double.infinity,
+                            height: 180,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  const Color(
+                                    0xFF071410,
+                                  ).withValues(alpha: 0.92),
+                                ],
+                                stops: const [0.2, 1.0],
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                          Positioned(
+                            bottom: 24,
+                            left: 24,
+                            right: 24,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFFC88B1A,
+                                    ).withValues(alpha: 0.9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'THE CRAFT',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 1.8,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Baked fresh daily\nin our forest atelier.',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 19,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'Georgia',
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            );
+                    ),
+                  ],
+                );
               },
             ),
           ),

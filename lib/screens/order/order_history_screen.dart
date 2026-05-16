@@ -21,15 +21,35 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
   Timer? _refreshTimer;
 
   static const _activeStatuses = {
-    'PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY',
+    'PENDING',
+    'PLACED',
+    'ACCEPTED',
+    'CONFIRMED',
+    'PREPARING',
+    'READY',
+    'OUT_FOR_DELIVERY',
   };
   static const _doneStatuses = {
-    'DELIVERED', 'COMPLETED', 'SERVED', 'CANCELLED',
+    'DELIVERED',
+    'COMPLETED',
+    'SERVED',
+    'CANCELLED',
   };
   static const _trackableStatuses = {
-    'PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY',
+    'PENDING',
+    'PLACED',
+    'ACCEPTED',
+    'CONFIRMED',
+    'PREPARING',
+    'READY',
+    'OUT_FOR_DELIVERY',
   };
-  static const _cancellableStatuses = {'PLACED', 'ACCEPTED'};
+  static const _cancellableStatuses = {
+    'PENDING',
+    'PLACED',
+    'ACCEPTED',
+    'CONFIRMED',
+  };
   static const _reviewableStatuses = {'DELIVERED', 'COMPLETED', 'SERVED'};
 
   @override
@@ -80,12 +100,10 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
 
   String _formatDate(DateTime dt) {
     final now = DateTime.now();
-    final isToday = now.year == dt.year &&
-        now.month == dt.month &&
-        now.day == dt.day;
-    final isYesterday = now.year == dt.year &&
-        now.month == dt.month &&
-        now.day - 1 == dt.day;
+    final isToday =
+        now.year == dt.year && now.month == dt.month && now.day == dt.day;
+    final isYesterday =
+        now.year == dt.year && now.month == dt.month && now.day - 1 == dt.day;
     if (isToday) {
       final h = dt.hour.toString().padLeft(2, '0');
       final m = dt.minute.toString().padLeft(2, '0');
@@ -93,8 +111,18 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
     }
     if (isYesterday) return 'Yesterday';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month - 1]}';
   }
@@ -102,6 +130,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
   String _formatOrderType(String orderType) {
     switch (orderType.toLowerCase()) {
       case 'dinein': // cspell:disable-line
+      case 'dine_in':
+      case 'dine in':
         return 'DINE IN';
       case 'pickup':
         return 'PICKUP';
@@ -134,6 +164,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
           label: 'Cancelled',
         );
       case 'ACCEPTED':
+      case 'CONFIRMED':
         return (
           bg: const Color(0xFFE8F9EE),
           text: const Color(0xFF1E5C3A),
@@ -302,8 +333,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 color: selectedReason == null
-                                    ? const Color(0xFFDC2626)
-                                        .withValues(alpha: 0.4)
+                                    ? const Color(
+                                        0xFFDC2626,
+                                      ).withValues(alpha: 0.4)
                                     : const Color(0xFFDC2626),
                               ),
                             ),
@@ -321,22 +353,34 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
     );
 
     if (confirmed == true && mounted) {
-      final ok = await context
-          .read<OrderProvider>()
-          .cancelOrder(order.id, reason: selectedReason);
+      final provider = context.read<OrderProvider>();
+      final ok = await provider.cancelOrder(
+        order.id,
+        reason: selectedReason,
+      );
       if (mounted) {
         if (ok) {
-          context.read<OrderProvider>().loadOrderHistory();
+          provider.loadOrderHistory();
+          final refundMsg = provider.currentOrder?.paymentStatus == 'REFUNDING'
+              ? 'Order cancelled. Refund has been initiated.'
+              : 'Order cancelled successfully';
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Order cancelled successfully'),
-              backgroundColor: Color(0xFF1E5C3A),
+            SnackBar(
+              content: Text(refundMsg),
+              backgroundColor: const Color(0xFF1E5C3A),
             ),
           );
         } else {
+          final isPreparingError =
+              provider.cancelErrorCode == 'CANNOT_CANCEL' ||
+              (provider.error?.toLowerCase().contains('preparing') ?? false);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Could not cancel the order. Please try support.'),
+            SnackBar(
+              content: Text(
+                isPreparingError
+                    ? 'Your order is already being prepared and cannot be cancelled.'
+                    : 'Could not cancel the order. Please try support.',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -349,17 +393,15 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
     final status = _getStatusInfo(order.status);
     final isActive = _activeStatuses.contains(order.status.toUpperCase());
     final isDone = _reviewableStatuses.contains(order.status.toUpperCase());
-    final isCancellable =
-        _cancellableStatuses.contains(order.status.toUpperCase());
-    final isTrackable =
-        _trackableStatuses.contains(order.status.toUpperCase());
+    final isCancellable = _cancellableStatuses.contains(
+      order.status.toUpperCase(),
+    );
+    final isTrackable = _trackableStatuses.contains(order.status.toUpperCase());
     final isCancelled = order.status.toUpperCase() == 'CANCELLED';
     final itemNames = order.items.isNotEmpty
         ? order.items.map((e) => e.name).join(', ')
         : 'Order';
-    final shortId = order.id.length >= 8
-        ? order.id.substring(0, 8).toUpperCase()
-        : order.id.toUpperCase();
+    final shortId = order.displayNumber;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -380,8 +422,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
         children: [
           // Image header
           ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             child: Stack(
               children: [
                 Container(
@@ -504,7 +545,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Order #$shortId',
+                      'Order $shortId',
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
@@ -545,7 +586,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                         Icons.currency_rupee_rounded,
                         '₹${order.total.toStringAsFixed(0)}',
                       ),
-                      if (order.tableNumber != null) ...[
+                      if ((order.tableName ?? order.tableNumber) != null) ...[
                         Container(
                           height: 20,
                           width: 1,
@@ -554,12 +595,62 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                         ),
                         _detailChip(
                           Icons.table_restaurant_rounded,
-                          'T${order.tableNumber}',
+                          order.tableName ?? order.tableNumber!,
                         ),
                       ],
                     ],
                   ),
                 ),
+                // Refund status for cancelled paid orders
+                if (isCancelled &&
+                    (order.paymentStatus.toUpperCase() == 'REFUNDING' ||
+                        order.paymentStatus.toUpperCase() == 'REFUNDED')) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: order.paymentStatus.toUpperCase() == 'REFUNDED'
+                          ? const Color(0xFFE8F9EE)
+                          : const Color(0xFFFFF8E1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: order.paymentStatus.toUpperCase() == 'REFUNDED'
+                            ? const Color(0xFF2D8653)
+                            : const Color(0xFFC88B1A),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          order.paymentStatus.toUpperCase() == 'REFUNDED'
+                              ? Icons.check_circle_outline_rounded
+                              : Icons.currency_exchange_rounded,
+                          size: 14,
+                          color:
+                              order.paymentStatus.toUpperCase() == 'REFUNDED'
+                                  ? const Color(0xFF1E5C3A)
+                                  : const Color(0xFFC88B1A),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          order.paymentStatus.toUpperCase() == 'REFUNDED'
+                              ? 'Refund processed'
+                              : 'Refund initiated — processing',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color:
+                                order.paymentStatus.toUpperCase() == 'REFUNDED'
+                                    ? const Color(0xFF1E5C3A)
+                                    : const Color(0xFFC88B1A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // Action buttons
@@ -864,8 +955,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                           ),
                           const SizedBox(height: 16),
                           GestureDetector(
-                            onTap: () =>
-                                context.read<OrderProvider>().loadOrderHistory(),
+                            onTap: () => context
+                                .read<OrderProvider>()
+                                .loadOrderHistory(),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
@@ -913,11 +1005,9 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen>
                           )
                         : ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding:
-                                const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                             itemCount: filtered.length,
-                            itemBuilder: (_, i) =>
-                                _buildOrderCard(filtered[i]),
+                            itemBuilder: (_, i) => _buildOrderCard(filtered[i]),
                           ),
                   );
                 },

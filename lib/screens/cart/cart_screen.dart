@@ -8,6 +8,7 @@ import '../checkout/checkout_screen.dart';
 import '../profile/profile_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/dine_in_provider.dart';
 import '../shared/custom_bottom_nav_bar.dart';
 
 // ── "You might also like" suggestion ─────────────────────────────────────────
@@ -539,6 +540,7 @@ class _CartScreenState extends State<CartScreen> {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
+    final dineInTable = context.watch<DineInProvider>().currentTable;
     final mode = _getModeData(cart.orderMode);
     final totalItems = cart.totalItems;
 
@@ -750,6 +752,8 @@ class _CartScreenState extends State<CartScreen> {
             // ── Delivery address banner (delivery mode only) ─────────────────
             if (cart.orderMode == OrderMode.delivery)
               _buildDeliveryAddressBanner(),
+            if (cart.orderMode == OrderMode.dineIn)
+              _buildDineInTableBanner(dineInTable?.tableName),
 
             // ── Scrollable body ─────────────────────────────────────────────
             Expanded(
@@ -1309,6 +1313,77 @@ class _CartScreenState extends State<CartScreen> {
         onSelected: (addr) {
           setState(() => _deliveryAddress = addr);
         },
+      ),
+    );
+  }
+
+  Widget _buildDineInTableBanner(String? tableName) {
+    final hasTable = tableName != null && tableName.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: hasTable ? const Color(0xFFBFE5CA) : const Color(0xFFFFD1D1),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: hasTable ? _accentGreen : const Color(0xFFD44040),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.table_restaurant_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasTable ? 'Dine-in table confirmed' : 'Table QR required',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF9A9690),
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  hasTable
+                      ? tableName
+                      : 'Go back and scan the QR on your table',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: hasTable
+                        ? const Color(0xFF1C1A17)
+                        : const Color(0xFFD44040),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

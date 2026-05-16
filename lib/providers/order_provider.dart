@@ -20,10 +20,11 @@ class OrderProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Create new order (returns orderId on success)
-  Future<String?> createOrder({
+  /// Create new order — returns (orderId, orderNumber) on success, (null, null) on failure
+  Future<({String? orderId, int? orderNumber})> createOrder({
     required String orderType,
     required List<OrderItem> items,
+    int? tableId,
     String? tableNumber,
     String? deliveryAddressId,
     String? specialInstructions,
@@ -35,9 +36,10 @@ class OrderProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final orderId = await orderService.createOrder(
+      final result = await orderService.createOrder(
         orderType: orderType,
         items: items,
+        tableId: tableId,
         tableNumber: tableNumber,
         deliveryAddressId: deliveryAddressId,
         specialInstructions: specialInstructions,
@@ -46,10 +48,10 @@ class OrderProvider extends ChangeNotifier {
       );
 
       _error = null;
-      return orderId;
+      return (orderId: result.orderId, orderNumber: result.orderNumber);
     } on OrderException catch (e) {
       _error = e.message;
-      return null;
+      return (orderId: null, orderNumber: null);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -107,16 +109,20 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  /// Cancel order
+  String? _cancelErrorCode;
+  String? get cancelErrorCode => _cancelErrorCode;
+
+  /// Cancel order — returns true on success; on failure sets error and cancelErrorCode
   Future<bool> cancelOrder(String orderId, {String? reason}) async {
     _isLoading = true;
     _error = null;
+    _cancelErrorCode = null;
     notifyListeners();
 
     try {
       await orderService.cancelOrder(orderId, reason: reason);
-      
-      // Reload the order to get updated status
+
+      // Reload the order to reflect updated status + paymentStatus (REFUNDING)
       if (_currentOrder?.id == orderId) {
         await loadOrder(orderId);
       }
@@ -124,6 +130,7 @@ class OrderProvider extends ChangeNotifier {
       return true;
     } on OrderException catch (e) {
       _error = e.message;
+      _cancelErrorCode = e.errorCode;
       return false;
     } finally {
       _isLoading = false;
@@ -138,6 +145,7 @@ class OrderProvider extends ChangeNotifier {
     if (_currentOrder != null && _currentOrder!.id == status.orderId) {
       _currentOrder = _currentOrder!.copyWith(
         status: status.status,
+        paymentStatus: status.paymentStatus,
         estimatedTime: status.estimatedTimeRemaining > 0
             ? status.estimatedTimeRemaining
             : null,
@@ -146,7 +154,10 @@ class OrderProvider extends ChangeNotifier {
     // Keep history list in sync so the history screen reflects live statuses
     final idx = _orderHistory.indexWhere((o) => o.id == status.orderId);
     if (idx != -1) {
-      _orderHistory[idx] = _orderHistory[idx].copyWith(status: status.status);
+      _orderHistory[idx] = _orderHistory[idx].copyWith(
+        status: status.status,
+        paymentStatus: status.paymentStatus,
+      );
     }
     notifyListeners();
   }

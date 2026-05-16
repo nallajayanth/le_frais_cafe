@@ -51,6 +51,7 @@ class MenuItem {
   final bool isVeg;
   final bool isAvailable;
   final int preparationTime;
+  final int displayOrder;
   final List<CustomizationGroup>? customizations;
 
   MenuItem({
@@ -66,6 +67,7 @@ class MenuItem {
     this.tag,
     this.isAvailable = true,
     this.preparationTime = 15,
+    this.displayOrder = 0,
     this.customizations,
   });
 
@@ -101,6 +103,7 @@ class MenuItem {
       tag: json['tag'],
       isAvailable: json['isAvailable'] ?? json['is_available'] ?? true,
       preparationTime: json['prepTime'] ?? json['preparationTime'] ?? 15,
+      displayOrder: json['displayOrder'] ?? json['display_order'] ?? 0,
       customizations: customizations,
     );
   }

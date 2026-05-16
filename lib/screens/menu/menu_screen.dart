@@ -128,6 +128,9 @@ class _MenuScreenState extends State<MenuScreen> {
               i.description.toLowerCase().contains(q))
           .toList();
     }
+
+    // Respect the display order set by the admin in the back-office.
+    items.sort((a, b) => a.displayOrder.compareTo(b.displayOrder));
     return items;
   }
 

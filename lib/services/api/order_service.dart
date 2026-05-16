@@ -6,10 +6,11 @@ class OrderService {
 
   OrderService({required this.apiClient});
 
-  /// Create new order
-  Future<String> createOrder({
+  /// Create new order — returns (orderId, orderNumber)
+  Future<({String orderId, int? orderNumber})> createOrder({
     required String orderType, // dineIn, pickup, delivery
     required List<OrderItem> items,
+    int? tableId,
     String? tableNumber,
     String? deliveryAddressId,
     String? specialInstructions,
@@ -20,6 +21,7 @@ class OrderService {
       final body = {
         'orderType': orderType,
         'items': items.map((item) => item.toJson()).toList(),
+        if (tableId != null) 'tableId': tableId,
         if (tableNumber != null) 'tableNumber': tableNumber,
         if (deliveryAddressId != null) 'deliveryAddressId': deliveryAddressId,
         if (specialInstructions != null)
@@ -29,10 +31,11 @@ class OrderService {
       };
 
       final response = await apiClient.post('/orders', body);
-      // Backend returns {"orderId": "uuid"}, not a full Order object
+      // Backend returns {"orderId": "uuid", "orderNumber": 1042}
       final orderId = response['orderId'] as String? ?? '';
       if (orderId.isEmpty) throw OrderException('No orderId in response');
-      return orderId;
+      final orderNumber = _asNullableInt(response['orderNumber']);
+      return (orderId: orderId, orderNumber: orderNumber);
     } on ApiException catch (e) {
       throw OrderException(e.message);
     }
@@ -44,7 +47,8 @@ class OrderService {
       final response = await apiClient.get(
         '/orders?limit=$limit&offset=$offset',
       );
-      final orders = (response['data'] as List)
+      final rawOrders = response['data'] ?? response['orders'] ?? [];
+      final orders = (rawOrders as List)
           .map((item) => Order.fromJson(item as Map<String, dynamic>))
           .toList();
       return orders;
@@ -94,12 +98,15 @@ class OrderService {
     }
   }
 
-  /// Cancel order
-  Future<void> cancelOrder(String orderId, {String? reason}) async {
+  /// Cancel order — returns { refundInitiated, refundId, message }
+  Future<Map<String, dynamic>> cancelOrder(
+      String orderId, {String? reason}) async {
     try {
-      await apiClient.post('/orders/$orderId/cancel', {'reason': reason});
+      final response =
+          await apiClient.post('/orders/$orderId/cancel', {'reason': reason});
+      return response;
     } on ApiException catch (e) {
-      throw OrderException(e.message);
+      throw OrderException(e.message, errorCode: e.errorCode);
     }
   }
 
@@ -140,11 +147,15 @@ class OrderItem {
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     return OrderItem(
-      itemId: json['itemId'] ?? json['_id'] ?? '',
+      itemId:
+          (json['itemId'] ?? json['item_id'] ?? json['_id'] ?? json['id'] ?? '')
+              .toString(),
       name: json['name'] ?? 'Item',
-      quantity: json['quantity'] ?? 1,
-      price: (json['price'] ?? 0).toDouble(),
-      specialInstructions: json['specialInstructions'],
+      quantity: _asInt(json['quantity'], fallback: 1),
+      price: _asDouble(json['price']),
+      specialInstructions:
+          (json['specialInstructions'] ?? json['special_instructions'])
+              ?.toString(),
     );
   }
 }
@@ -152,7 +163,8 @@ class OrderItem {
 /// Order Status Model
 class OrderStatus {
   final String orderId;
-  final String status; // PENDING, PREPARING, READY, COMPLETED, CANCELLED
+  final String status;
+  final String? paymentStatus;
   final DateTime statusUpdatedAt;
   final int estimatedTimeRemaining; // in minutes
   final String? message;
@@ -160,6 +172,7 @@ class OrderStatus {
   OrderStatus({
     required this.orderId,
     required this.status,
+    this.paymentStatus,
     required this.statusUpdatedAt,
     required this.estimatedTimeRemaining,
     this.message,
@@ -167,13 +180,19 @@ class OrderStatus {
 
   factory OrderStatus.fromJson(Map<String, dynamic> json) {
     return OrderStatus(
-      orderId: json['orderId'] ?? json['_id'] ?? '',
+      orderId: (json['orderId'] ?? json['order_id'] ?? json['_id'] ?? '')
+          .toString(),
       status: json['status'] ?? 'PENDING',
-      statusUpdatedAt: DateTime.parse(
-        json['statusUpdatedAt'] ?? DateTime.now().toIso8601String(),
+      paymentStatus:
+          (json['paymentStatus'] ?? json['payment_status'])?.toString(),
+      statusUpdatedAt: _asDateTime(
+        json['statusUpdatedAt'] ?? json['status_updated_at'],
       ),
-      estimatedTimeRemaining: json['estimatedTimeRemaining'] ?? 15,
-      message: json['message'],
+      estimatedTimeRemaining: _asInt(
+        json['estimatedTimeRemaining'] ?? json['estimated_time_remaining'],
+        fallback: 15,
+      ),
+      message: json['message']?.toString(),
     );
   }
 
@@ -187,6 +206,7 @@ class OrderStatus {
 /// Order Model
 class Order {
   final String id;
+  final int? orderNumber;
   final String customerId;
   final String orderType; // dineIn, pickup, delivery
   final List<OrderItem> items;
@@ -200,14 +220,18 @@ class Order {
   final String paymentStatus;
   final String paymentMethod;
   final String? tableNumber;
+  final int? tableId;
+  final String? tableName;
   final String? deliveryAddressId;
   final String? specialInstructions;
+  final String? cancellationReason;
   final int estimatedTime; // in minutes
   final DateTime createdAt;
   final DateTime? completedAt;
 
   Order({
     required this.id,
+    this.orderNumber,
     required this.customerId,
     required this.orderType,
     required this.items,
@@ -221,42 +245,72 @@ class Order {
     required this.paymentStatus,
     required this.paymentMethod,
     this.tableNumber,
+    this.tableId,
+    this.tableName,
     this.deliveryAddressId,
     this.specialInstructions,
+    this.cancellationReason,
     required this.estimatedTime,
     required this.createdAt,
     this.completedAt,
   });
 
+  /// Human-readable display label — e.g. "#1042" when backend number is
+  /// available, falling back to the first 8 chars of the UUID.
+  String get displayNumber {
+    if (orderNumber != null) return '#$orderNumber';
+    final short = id.length >= 8 ? id.substring(0, 8).toUpperCase() : id.toUpperCase();
+    return '#$short';
+  }
+
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
       id: json['_id'] ?? json['id'] ?? '',
-      customerId: json['customerId'] ?? '',
-      orderType: json['orderType'] ?? 'dineIn',
+      orderNumber: _asNullableInt(json['orderNumber'] ?? json['order_number']),
+      customerId: (json['customerId'] ?? json['customer_id'] ?? '').toString(),
+      orderType: (json['orderType'] ?? json['order_type'] ?? 'dine_in')
+          .toString(),
       items:
           (json['items'] as List?)
               ?.map((item) => OrderItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
-      subtotal: (json['subtotal'] ?? 0).toDouble(),
-      gst: (json['gst'] ?? 0).toDouble(),
-      serviceCharge: (json['serviceCharge'] ?? 0).toDouble(),
-      deliveryCharge: (json['deliveryCharge'] ?? 0).toDouble(),
-      discount: (json['discount'] ?? 0).toDouble(),
-      total: (json['total'] ?? 0).toDouble(),
-      status: json['status'] ?? 'PENDING',
-      paymentStatus: json['paymentStatus'] ?? 'PENDING',
-      paymentMethod: json['paymentMethod'] ?? 'CARD',
-      tableNumber: json['tableNumber']?.toString(),
-      deliveryAddressId: json['deliveryAddressId'],
-      specialInstructions: json['specialInstructions'],
-      estimatedTime: json['estimatedTime'] ?? 15,
-      createdAt: DateTime.parse(
-        json['createdAt'] ?? DateTime.now().toIso8601String(),
+      subtotal: _asDouble(json['subtotal']),
+      gst: _asDouble(json['gst']),
+      serviceCharge: _asDouble(json['serviceCharge'] ?? json['service_charge']),
+      deliveryCharge: _asDouble(
+        json['deliveryCharge'] ?? json['delivery_charge'],
       ),
-      completedAt: json['completedAt'] != null
-          ? DateTime.parse(json['completedAt'])
-          : null,
+      discount: _asDouble(json['discount']),
+      total: _asDouble(
+        json['total'] ?? json['totalAmount'] ?? json['total_amount'],
+      ),
+      status: (json['status'] ?? 'PENDING').toString(),
+      paymentStatus:
+          (json['paymentStatus'] ?? json['payment_status'] ?? 'PENDING')
+              .toString(),
+      paymentMethod: (json['paymentMethod'] ?? json['payment_method'] ?? 'CARD')
+          .toString(),
+      tableNumber: (json['tableNumber'] ?? json['table_number'])?.toString(),
+      tableId: _asNullableInt(json['tableId'] ?? json['table_id']),
+      tableName: (json['tableName'] ?? json['table_name'])?.toString(),
+      deliveryAddressId:
+          (json['deliveryAddressId'] ?? json['delivery_address_id'])
+              ?.toString(),
+      specialInstructions:
+          (json['specialInstructions'] ?? json['special_instructions'])
+              ?.toString(),
+      cancellationReason:
+          (json['cancellationReason'] ?? json['cancellation_reason'])
+              ?.toString(),
+      estimatedTime: _asInt(
+        json['estimatedTime'] ?? json['estimated_time'],
+        fallback: 15,
+      ),
+      createdAt: _asDateTime(json['createdAt'] ?? json['created_at']),
+      completedAt: _asNullableDateTime(
+        json['completedAt'] ?? json['completed_at'],
+      ),
     );
   }
 
@@ -266,9 +320,10 @@ class Order {
   bool get isCompleted => status == 'COMPLETED';
   bool get isCancelled => status == 'CANCELLED';
 
-  Order copyWith({String? status, int? estimatedTime}) {
+  Order copyWith({String? status, String? paymentStatus, int? estimatedTime}) {
     return Order(
       id: id,
+      orderNumber: orderNumber,
       customerId: customerId,
       orderType: orderType,
       items: items,
@@ -279,11 +334,14 @@ class Order {
       discount: discount,
       total: total,
       status: status ?? this.status,
-      paymentStatus: paymentStatus,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
       paymentMethod: paymentMethod,
       tableNumber: tableNumber,
+      tableId: tableId,
+      tableName: tableName,
       deliveryAddressId: deliveryAddressId,
       specialInstructions: specialInstructions,
+      cancellationReason: cancellationReason,
       estimatedTime: estimatedTime ?? this.estimatedTime,
       createdAt: createdAt,
       completedAt: completedAt,
@@ -294,9 +352,38 @@ class Order {
 /// Order Exception
 class OrderException implements Exception {
   final String message;
+  final String? errorCode;
 
-  OrderException(this.message);
+  OrderException(this.message, {this.errorCode});
 
   @override
   String toString() => 'OrderException: $message';
+}
+
+double _asDouble(dynamic value, {double fallback = 0}) {
+  if (value == null) return fallback;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? fallback;
+}
+
+int _asInt(dynamic value, {int fallback = 0}) {
+  if (value == null) return fallback;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString()) ?? fallback;
+}
+
+int? _asNullableInt(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+DateTime _asDateTime(dynamic value) {
+  return _asNullableDateTime(value) ?? DateTime.now();
+}
+
+DateTime? _asNullableDateTime(dynamic value) {
+  if (value == null) return null;
+  if (value is DateTime) return value;
+  return DateTime.tryParse(value.toString());
 }

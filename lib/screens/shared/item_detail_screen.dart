@@ -45,6 +45,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
   int _qty = 0;
   bool _initialized = false;
   bool _descExpanded = false;
+  bool _showAllReviews = false;
   final TextEditingController _instructionsController = TextEditingController();
   final Map<String, Set<CustomizationOption>> _selectedOptions = {};
 
@@ -650,12 +651,17 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                                   ),
                                 ),
                                 if (reviews.length > 3)
-                                  const Text(
-                                    'View All',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: _darkGreen,
+                                  GestureDetector(
+                                    onTap: () => setState(
+                                        () => _showAllReviews = !_showAllReviews),
+                                    child: Text(
+                                      _showAllReviews ? 'Show Less' : 'View All',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: _darkGreen,
+                                        decoration: TextDecoration.underline,
+                                      ),
                                     ),
                                   ),
                               ],
@@ -703,7 +709,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                                 ),
                               )
                             else
-                              ...reviews.take(5).map(_buildReviewCard),
+                              ...(_showAllReviews ? reviews : reviews.take(5))
+                                  .map(_buildReviewCard),
                           ],
                         );
                       },

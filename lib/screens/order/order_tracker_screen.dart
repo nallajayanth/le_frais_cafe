@@ -544,7 +544,7 @@ class _OrderTrackerScreenState extends State<OrderTrackerScreen>
         children: [
           // Order label
           Text(
-            'ORDER #${order.id.length >= 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase()}  ·  DELIVERY',
+            'ORDER ${order.displayNumber}  ·  DELIVERY',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 10,
@@ -883,7 +883,7 @@ class _OrderTrackerScreenState extends State<OrderTrackerScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'ORDER #${order.id.length >= 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase()}  ·  ${_formatOrderType(order.orderType)}',
+            'ORDER ${order.displayNumber}  ·  ${_formatOrderType(order.orderType)}',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 10,
@@ -1805,7 +1805,7 @@ class _BillBottomSheetState extends State<_BillBottomSheet> {
               ],
             ),
             Text(
-              'ORDER #${order.id.length >= 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase()}',
+              'ORDER ${order.displayNumber}',
               style: const TextStyle(
                 fontSize: 11,
                 color: Color(0xFF8A8884),

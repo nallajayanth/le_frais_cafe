@@ -24,6 +24,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
   static const _cream = Color(0xFFF4F2EC);
 
   @override
+  void initState() {
+    super.initState();
+    // Auto-select the item when there is only one so the review is always
+    // linked to a menu item and shows up on the item detail screen.
+    if (widget.order.items.length == 1) {
+      _selectedItemId = widget.order.items.first.itemId;
+    }
+  }
+
+  @override
   void dispose() {
     _titleCtrl.dispose();
     _commentCtrl.dispose();
@@ -159,7 +169,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Order #${widget.order.id.substring(0, 8).toUpperCase()}',
+                                  'Order ${widget.order.displayNumber}',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w800,
@@ -238,7 +248,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     const SizedBox(height: 28),
 
                     // Optional: select item
-                    if (widget.order.items.length > 1) ...[
+                    if (widget.order.items.isNotEmpty) ...[
                       const Text(
                         'Rate a specific item (optional)',
                         style: TextStyle(

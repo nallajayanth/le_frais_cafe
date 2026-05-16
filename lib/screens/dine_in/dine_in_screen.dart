@@ -3,6 +3,7 @@ import '../shared/item_detail_screen.dart';
 import '../cart/cart_screen.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/dine_in_provider.dart';
 import '../../providers/menu_provider.dart';
 import '../../models/cart_entry.dart';
 import '../../models/menu_item.dart';
@@ -34,7 +35,13 @@ class _DineInScreenState extends State<DineInScreen>
   static const Color _bgCream = Color(0xFFF4F2EC);
 
   static const List<String> _staticCategories = [
-    'All', 'Appetizers', 'Chinese Starters', 'Momos', 'Main Course', 'Beverages', 'Desserts',
+    'All',
+    'Appetizers',
+    'Chinese Starters',
+    'Momos',
+    'Main Course',
+    'Beverages',
+    'Desserts',
   ];
 
   @override
@@ -44,7 +51,10 @@ class _DineInScreenState extends State<DineInScreen>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     );
-    _headerFade = CurvedAnimation(parent: _headerAnimController, curve: Curves.easeOut);
+    _headerFade = CurvedAnimation(
+      parent: _headerAnimController,
+      curve: Curves.easeOut,
+    );
     _headerAnimController.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -68,16 +78,21 @@ class _DineInScreenState extends State<DineInScreen>
 
     // Category filter
     if (_selectedCategoryId != null) {
-      items = items.where((item) => item.category == _selectedCategoryId).toList();
+      items = items
+          .where((item) => item.category == _selectedCategoryId)
+          .toList();
     }
 
     // Search filter
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
-      items = items.where((item) =>
-        item.name.toLowerCase().contains(q) ||
-        item.description.toLowerCase().contains(q)
-      ).toList();
+      items = items
+          .where(
+            (item) =>
+                item.name.toLowerCase().contains(q) ||
+                item.description.toLowerCase().contains(q),
+          )
+          .toList();
     }
 
     return items;
@@ -89,15 +104,15 @@ class _DineInScreenState extends State<DineInScreen>
     // Use category NAME as filterId — the backend returns item.category as a
     // name string ("Appetizers", etc.) so filterId must also be the name.
     if (menu.menuItems.isNotEmpty && menu.categories.isNotEmpty) {
-      return [
-        (null, 'All'),
-        ...menu.categories.map((c) => (c.name, c.name)),
-      ];
+      return [(null, 'All'), ...menu.categories.map((c) => (c.name, c.name))];
     }
-    return _staticCategories.map((name) => (name == 'All' ? null : name, name)).toList();
+    return _staticCategories
+        .map((name) => (name == 'All' ? null : name, name))
+        .toList();
   }
 
   Widget _buildHeader(CartProvider cart) {
+    final table = context.watch<DineInProvider>().currentTable;
     return FadeTransition(
       opacity: _headerFade,
       child: Container(
@@ -153,19 +168,29 @@ class _DineInScreenState extends State<DineInScreen>
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: _gold.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: _gold.withValues(alpha: 0.4), width: 1),
+                      border: Border.all(
+                        color: _gold.withValues(alpha: 0.4),
+                        width: 1,
+                      ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.table_restaurant_rounded, color: Color(0xFFC88B1A), size: 11),
-                        SizedBox(width: 4),
+                        const Icon(
+                          Icons.table_restaurant_rounded,
+                          color: Color(0xFFC88B1A),
+                          size: 11,
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          'DINE-IN',
+                          table?.tableName.toUpperCase() ?? 'DINE-IN',
                           style: TextStyle(
                             color: Color(0xFFC88B1A),
                             fontSize: 9,
@@ -182,9 +207,9 @@ class _DineInScreenState extends State<DineInScreen>
 
             // Cart button
             GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CartScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const CartScreen())),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -195,7 +220,11 @@ class _DineInScreenState extends State<DineInScreen>
                       color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 22),
+                    child: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                   if (cart.totalItems > 0)
                     Positioned(
@@ -206,11 +235,18 @@ class _DineInScreenState extends State<DineInScreen>
                         decoration: BoxDecoration(
                           color: _gold,
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF0F2A1A), width: 2),
+                          border: Border.all(
+                            color: const Color(0xFF0F2A1A),
+                            width: 2,
+                          ),
                         ),
                         child: Text(
                           '${cart.totalItems}',
-                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ),
@@ -252,10 +288,18 @@ class _DineInScreenState extends State<DineInScreen>
           }),
           decoration: InputDecoration(
             hintText: 'Search in the menu...',
-            hintStyle: const TextStyle(color: Color(0xFFB0AEAA), fontSize: 14, fontWeight: FontWeight.w500),
+            hintStyle: const TextStyle(
+              color: Color(0xFFB0AEAA),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
             prefixIcon: const Padding(
               padding: EdgeInsets.only(left: 14, right: 8),
-              child: Icon(Icons.search_rounded, size: 20, color: Color(0xFFB0AEAA)),
+              child: Icon(
+                Icons.search_rounded,
+                size: 20,
+                color: Color(0xFFB0AEAA),
+              ),
             ),
             prefixIconConstraints: const BoxConstraints(minWidth: 0),
             suffixIcon: _searchQuery.isNotEmpty
@@ -266,7 +310,11 @@ class _DineInScreenState extends State<DineInScreen>
                     },
                     child: const Padding(
                       padding: EdgeInsets.only(right: 14),
-                      child: Icon(Icons.cancel_rounded, size: 18, color: Color(0xFFB0AEAA)),
+                      child: Icon(
+                        Icons.cancel_rounded,
+                        size: 18,
+                        color: Color(0xFFB0AEAA),
+                      ),
                     ),
                   )
                 : null,
@@ -274,7 +322,11 @@ class _DineInScreenState extends State<DineInScreen>
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
-          style: const TextStyle(fontSize: 14, color: Color(0xFF1C1A17), fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF1C1A17),
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -323,7 +375,7 @@ class _DineInScreenState extends State<DineInScreen>
                           color: const Color(0xFF0F2A1A).withValues(alpha: 0.3),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
-                        )
+                        ),
                       ]
                     : [],
               ),
@@ -384,7 +436,9 @@ class _DineInScreenState extends State<DineInScreen>
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
                     child: Image.network(
                       item.imageUrl,
                       width: double.infinity,
@@ -393,7 +447,11 @@ class _DineInScreenState extends State<DineInScreen>
                       errorBuilder: (context, error, _) => Container(
                         color: const Color(0xFFF0EDE6),
                         child: const Center(
-                          child: Icon(Icons.fastfood_rounded, color: Color(0xFFCECCC8), size: 36),
+                          child: Icon(
+                            Icons.fastfood_rounded,
+                            color: Color(0xFFCECCC8),
+                            size: 36,
+                          ),
                         ),
                       ),
                     ),
@@ -408,7 +466,10 @@ class _DineInScreenState extends State<DineInScreen>
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.35)],
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.35),
+                          ],
                         ),
                       ),
                     ),
@@ -423,7 +484,10 @@ class _DineInScreenState extends State<DineInScreen>
                       bottom: 8,
                       left: 10,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: _gold,
                           borderRadius: BorderRadius.circular(8),
@@ -467,7 +531,11 @@ class _DineInScreenState extends State<DineInScreen>
                       item.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10.5, color: Color(0xFF9A9690), height: 1.3),
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        color: Color(0xFF9A9690),
+                        height: 1.3,
+                      ),
                     ),
                     const Spacer(),
                     Row(
@@ -500,10 +568,17 @@ class _DineInScreenState extends State<DineInScreen>
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: isVeg ? const Color(0xFF2D8653) : Colors.red, width: 1.5),
+        border: Border.all(
+          color: isVeg ? const Color(0xFF2D8653) : Colors.red,
+          width: 1.5,
+        ),
         borderRadius: BorderRadius.circular(4),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 1)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
         ],
       ),
       child: Container(
@@ -520,13 +595,15 @@ class _DineInScreenState extends State<DineInScreen>
   Widget _quantityControls(MenuItem item, CartProvider cart, int qty) {
     if (qty == 0) {
       return GestureDetector(
-        onTap: () => cart.addItem(CartEntry(
-          itemId: item.id,
-          name: item.name,
-          price: item.price,
-          imageUrl: item.imageUrl,
-          qty: 1,
-        )),
+        onTap: () => cart.addItem(
+          CartEntry(
+            itemId: item.id,
+            name: item.name,
+            price: item.price,
+            imageUrl: item.imageUrl,
+            qty: 1,
+          ),
+        ),
         child: Container(
           width: 34,
           height: 34,
@@ -570,7 +647,11 @@ class _DineInScreenState extends State<DineInScreen>
           ),
           Text(
             '$qty',
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _darkGreen),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+              color: _darkGreen,
+            ),
           ),
           GestureDetector(
             onTap: () {
@@ -607,14 +688,18 @@ class _DineInScreenState extends State<DineInScreen>
               ],
             ),
             child: Icon(
-              _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.restaurant_rounded,
+              _searchQuery.isNotEmpty
+                  ? Icons.search_off_rounded
+                  : Icons.restaurant_rounded,
               size: 36,
               color: const Color(0xFFD0CEC9),
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            _searchQuery.isNotEmpty ? 'No results for "$_searchQuery"' : 'Nothing here yet',
+            _searchQuery.isNotEmpty
+                ? 'No results for "$_searchQuery"'
+                : 'Nothing here yet',
             style: const TextStyle(
               color: Color(0xFF6A6865),
               fontSize: 16,
@@ -624,7 +709,9 @@ class _DineInScreenState extends State<DineInScreen>
           ),
           const SizedBox(height: 6),
           Text(
-            _searchQuery.isNotEmpty ? 'Try a different search term' : 'No items in this category',
+            _searchQuery.isNotEmpty
+                ? 'Try a different search term'
+                : 'No items in this category',
             style: const TextStyle(color: Color(0xFF9A9690), fontSize: 13),
           ),
         ],
@@ -672,18 +759,19 @@ class _DineInScreenState extends State<DineInScreen>
                       ),
                     )
                   : items.isEmpty
-                      ? _buildEmptyState()
-                      : GridView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  ? _buildEmptyState()
+                  : GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             crossAxisSpacing: 14,
                             mainAxisSpacing: 14,
                             childAspectRatio: 0.60,
                           ),
-                          itemCount: items.length,
-                          itemBuilder: (ctx, i) => _buildGridCard(items[i], cart),
-                        ),
+                      itemCount: items.length,
+                      itemBuilder: (ctx, i) => _buildGridCard(items[i], cart),
+                    ),
             ),
           ],
         ),
@@ -707,9 +795,9 @@ class _DineInScreenState extends State<DineInScreen>
         ],
       ),
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const CartScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const CartScreen())),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
@@ -735,7 +823,11 @@ class _DineInScreenState extends State<DineInScreen>
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.shopping_bag_rounded, color: Colors.white, size: 20),
+                child: const Icon(
+                  Icons.shopping_bag_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 14),
               Column(
@@ -744,17 +836,28 @@ class _DineInScreenState extends State<DineInScreen>
                 children: [
                   Text(
                     '${cart.totalItems} ${cart.totalItems == 1 ? 'item' : 'items'} in cart',
-                    style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   Text(
                     '₹${cart.subtotal.toStringAsFixed(0)}',
-                    style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFC88B1A),
                   borderRadius: BorderRadius.circular(12),
@@ -763,10 +866,19 @@ class _DineInScreenState extends State<DineInScreen>
                   children: [
                     Text(
                       'CHECKOUT',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                     SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 12),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      color: Colors.white,
+                      size: 12,
+                    ),
                   ],
                 ),
               ),

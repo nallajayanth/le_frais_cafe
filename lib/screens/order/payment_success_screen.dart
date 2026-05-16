@@ -7,8 +7,13 @@ import 'order_tracker_screen.dart';
 
 class PaymentSuccessScreen extends StatefulWidget {
   final String orderId;
+  final int? orderNumber;
 
-  const PaymentSuccessScreen({super.key, required this.orderId});
+  const PaymentSuccessScreen({
+    super.key,
+    required this.orderId,
+    this.orderNumber,
+  });
 
   @override
   State<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
@@ -90,8 +95,11 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
 
   @override
   Widget build(BuildContext context) {
-    final shortId =
-        widget.orderId.length >= 8 ? widget.orderId.substring(0, 8).toUpperCase() : widget.orderId.toUpperCase();
+    final shortId = widget.orderNumber != null
+        ? '#${widget.orderNumber}'
+        : (widget.orderId.length >= 8
+            ? '#${widget.orderId.substring(0, 8).toUpperCase()}'
+            : '#${widget.orderId.toUpperCase()}');
 
     return Scaffold(
       backgroundColor: _cream,
@@ -195,7 +203,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen>
                                 size: 14, color: _gold),
                             const SizedBox(width: 6),
                             Text(
-                              'ORDER #$shortId CONFIRMED',
+                              'ORDER $shortId CONFIRMED',
                               style: const TextStyle(
                                 color: _gold,
                                 fontSize: 10,
